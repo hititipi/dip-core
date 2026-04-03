@@ -166,7 +166,7 @@ public class DipEditorUpdater {
 		updateNodePresentationWithChildren(nodeOpt.get());		
 	}
 	
-	public void updateAfterDelete(IDipDocumentElement[] dipDocElements) {		
+	public void updateAfterDelete(IDipDocumentElement[] dipDocElements) {
 		// dip-model level
 		saveParents(getDipParents(dipDocElements));				
 		additionalModelUpdate(dipDocElements);	
@@ -499,7 +499,7 @@ public class DipEditorUpdater {
 		model().additionalUpdate(parentPaths);
 	}
 	
-	private void updateNumeration() {
+	public void updateNumeration() {
 		table().dipProject().updateNumeration();	
 	}
 	

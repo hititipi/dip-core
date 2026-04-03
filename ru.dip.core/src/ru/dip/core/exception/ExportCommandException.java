@@ -27,6 +27,10 @@ public class ExportCommandException extends Exception implements IExportExceptio
 	private final String fCommand;
 	private final Throwable fCause;
 
+	public ExportCommandException(String message, Throwable cause) {
+		this(null, message, cause);
+	}
+	
 	public ExportCommandException(String command, String message, Throwable cause) {
 		fCommand = command;
 		fMessage = message;
@@ -42,22 +46,17 @@ public class ExportCommandException extends Exception implements IExportExceptio
 		return fMessage;
 	}
 
-	public String getCommand() {
-		return fCommand;
-	}
-
 	@Override
 	public String getFullMessage() {
 		StringBuilder builder = new StringBuilder();
-		builder.append(fCommand);
-		builder.append("\n\n");
 		if (fCommand != null && !fCommand.isEmpty()) {
 			builder.append(fCommand);
-			builder.append("\n");
+			builder.append("\n\n");
 		}
+		
 		if (fMessage != null && !fMessage.isEmpty()) {
 			builder.append(fMessage);
-			builder.append("\n");
+			builder.append("\n\n");
 		}
 
 		if (fCause != null) {

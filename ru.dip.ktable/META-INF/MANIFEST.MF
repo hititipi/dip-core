@@ -5,7 +5,7 @@ Bundle-SymbolicName: ru.dip.ktable;singleton:=true
 Bundle-Version: 1.0.1
 Bundle-License: https://www.eclipse.org/legal/epl/epl-v10.html
 Automatic-Module-Name: ru.dip.ktable
-Bundle-RequiredExecutionEnvironment: JavaSE-11
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: org.eclipse.swt,
  ru.dip.ktable,
  org.eclipse.jface,

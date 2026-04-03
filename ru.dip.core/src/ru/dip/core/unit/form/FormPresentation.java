@@ -77,8 +77,8 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 		FormReader reader = new FormReader(getUnit().resource());
 		reader.read();
 		for (Field field: reader.getFields()) {
-			Field oldField = fReader.getFieldByName(field.getName());
-			oldField.setValue(field.getValue());
+			FormField oldField = getFormFieldByName(field.getName());
+			oldField.updateField(field);
 		}
 	}
 	

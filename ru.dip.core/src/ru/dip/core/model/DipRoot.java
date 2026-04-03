@@ -235,7 +235,7 @@ public class DipRoot {
 		if (resource instanceof IProject) {
 			return resource.getName();
 		}
-		return resource.getName() + "/" + mapID(parent);
+		return resource.getName() + "/" + mapID(parent)+ "@" + resource.getLocalTimeStamp();
 	}
 	
 	public String mapID(IDipElement element) {			
@@ -246,6 +246,10 @@ public class DipRoot {
 			element = element.parent();
 		}
 		builder.append(element.name());
+		builder.append("@");
+		if (element.resource() != null) {
+			builder.append(element.resource().getLocalTimeStamp());
+		}
 		return builder.toString();
 	}	
 	

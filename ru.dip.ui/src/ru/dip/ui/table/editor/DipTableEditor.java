@@ -182,7 +182,8 @@ public class DipTableEditor extends EditorPart implements IResourceChangeListene
 				kTable().setDiffMode(false);
 				kTable().setOnlyDiffMode(false);
 				kTable().setDinamicallyDiffMode(false);
-				setNewModel(new TableModel(tableContainer));			
+				updater().updateNumeration();
+				setNewModel(new TableModel(tableContainer));
 			}	
 		}
 	}

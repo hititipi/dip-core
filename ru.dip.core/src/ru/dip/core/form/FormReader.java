@@ -104,7 +104,7 @@ public class FormReader {
 	public void saveDocument(){
 		Path path = Paths.get(fFile.getLocationURI());
 		String content = fDocument.get();
-		ArrayList<String> list = new ArrayList<>();
+		List<String> list = new ArrayList<>();
 		list.add(content);
 		try {
 			Files.write(path, list, StandardCharsets.UTF_8);

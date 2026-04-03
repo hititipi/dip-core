@@ -251,7 +251,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	
 	@Override
 	public IDipDocumentElement[] getDipChildren() {
-		ArrayList<IDipDocumentElement> extendedChildren = new ArrayList<>();		
+		List<IDipDocumentElement> extendedChildren = new ArrayList<>();		
 		for (IDipDocumentElement element: getDipDocChildrenList()){
 			if (element instanceof IDipParent){
 				extendedChildren.add((IDipParent) element);

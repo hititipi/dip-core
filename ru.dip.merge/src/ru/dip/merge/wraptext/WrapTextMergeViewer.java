@@ -28,7 +28,9 @@ package ru.dip.merge.wraptext;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
+import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -46,11 +48,12 @@ import org.eclipse.compare.INavigatable;
 import org.eclipse.compare.ISharedDocumentAdapter;
 import org.eclipse.compare.IStreamContentAccessor;
 import org.eclipse.compare.ITypedElement;
+import org.eclipse.compare.LabelContributionItem;
 import org.eclipse.compare.SharedDocumentAdapter;
 import org.eclipse.compare.contentmergeviewer.IDocumentRange;
+import org.eclipse.compare.contentmergeviewer.IIgnoreWhitespaceContributor;
 import org.eclipse.compare.contentmergeviewer.IMergeViewerContentProvider;
 import org.eclipse.compare.contentmergeviewer.ITokenComparator;
-import org.eclipse.compare.contentmergeviewer.TextMergeViewer;
 import org.eclipse.compare.contentmergeviewer.TokenComparator;
 import org.eclipse.compare.internal.ChangeCompareFilterPropertyAction;
 import org.eclipse.compare.internal.ChangePropertyAction;
@@ -67,9 +70,12 @@ import org.eclipse.compare.internal.DocumentManager;
 import org.eclipse.compare.internal.ICompareContextIds;
 import org.eclipse.compare.internal.ICompareUIConstants;
 import org.eclipse.compare.internal.IMergeViewerTestAdapter;
+import org.eclipse.compare.internal.MergeSourceViewer;
 import org.eclipse.compare.internal.MergeViewerContentProvider;
 import org.eclipse.compare.internal.NavigationEndDialog;
 import org.eclipse.compare.internal.OutlineViewerCreator;
+import org.eclipse.compare.internal.ShowWhitespaceAction;
+import org.eclipse.compare.internal.TextEditorPropertyAction;
 import org.eclipse.compare.internal.Utilities;
 import org.eclipse.compare.internal.merge.DocumentMerger;
 import org.eclipse.compare.internal.merge.DocumentMerger.Diff;
@@ -146,6 +152,7 @@ import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.accessibility.AccessibleAdapter;
 import org.eclipse.swt.accessibility.AccessibleEvent;
+import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.DisposeEvent;
@@ -175,10 +182,9 @@ import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.ScrollBar;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.TypedListener;
+import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IKeyBindingService;
@@ -209,11 +215,6 @@ import org.eclipse.ui.texteditor.IFindReplaceTargetExtension2;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.ui.texteditor.ITextEditorActionDefinitionIds;
 import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
-
-import com.ibm.icu.text.MessageFormat;
-
-import ru.dip.merge.wraptext.wrapper.BufferedCanvas;
-
 
 /**
  * A text merge viewer uses the <code>RangeDifferencer</code> to perform a
@@ -298,15 +299,15 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		ITextEditorActionDefinitionIds.SHOW_WHITESPACE_CHARACTERS
 	};
 	private static final String[] TEXT_ACTIONS= {
-		WrapMergeSourceViewer.UNDO_ID,
-		WrapMergeSourceViewer.REDO_ID,
-		WrapMergeSourceViewer.CUT_ID,
-		WrapMergeSourceViewer.COPY_ID,
-		WrapMergeSourceViewer.PASTE_ID,
-		WrapMergeSourceViewer.DELETE_ID,
-		WrapMergeSourceViewer.SELECT_ALL_ID,
-		WrapMergeSourceViewer.FIND_ID,
-		WrapMergeSourceViewer.GOTO_LINE_ID,
+		MergeSourceViewer.UNDO_ID,
+		MergeSourceViewer.REDO_ID,
+		MergeSourceViewer.CUT_ID,
+		MergeSourceViewer.COPY_ID,
+		MergeSourceViewer.PASTE_ID,
+		MergeSourceViewer.DELETE_ID,
+		MergeSourceViewer.SELECT_ALL_ID,
+		MergeSourceViewer.FIND_ID,
+		MergeSourceViewer.GOTO_LINE_ID,
 		ITextEditorActionDefinitionIds.SHOW_WHITESPACE_CHARACTERS
 	};
 
@@ -394,9 +395,9 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	private HashMap<Object, Position> fNewLeftRanges= new HashMap<>();
 	private HashMap<Object, Position> fNewRightRanges= new HashMap<>();
 
-	private WrapMergeSourceViewer fAncestor;
-	private WrapMergeSourceViewer fLeft;
-	private WrapMergeSourceViewer fRight;
+	private MergeSourceViewer fAncestor;
+	private MergeSourceViewer fLeft;
+	private MergeSourceViewer fRight;
 
 	private int fLeftLineCount;
 	private int fRightLineCount;
@@ -428,7 +429,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 	private boolean fSynchronizedScrolling= true;
 
-	private WrapMergeSourceViewer fFocusPart;
+	private MergeSourceViewer fFocusPart;
 
 	private boolean fSubDoc= true;
 	private IPositionUpdater fPositionUpdater;
@@ -438,9 +439,9 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 
 	// SWT widgets
-	private BufferedCanvas fAncestorCanvas;
-	private BufferedCanvas fLeftCanvas;
-	private BufferedCanvas fRightCanvas;
+	private Canvas fAncestorCanvas;
+	private Canvas fLeftCanvas;
+	private Canvas fRightCanvas;
 	private Canvas fScrollCanvas;
 	private ScrollBar fVScrollBar;
 	private Canvas fBirdsEyeCanvas;
@@ -464,9 +465,9 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	private int fSynchronziedScrollPosition;
 	private ActionContributionItem fNextChange;
 	private ActionContributionItem fPreviousChange;
-	private WrapShowWhitespaceAction showWhitespaceAction;
+	private ShowWhitespaceAction showWhitespaceAction;
 	private InternalOutlineViewerCreator fOutlineViewerCreator;
-	private WrapTextEditorPropertyAction toggleLineNumbersAction;
+	private TextEditorPropertyAction toggleLineNumbersAction;
 	private IFindReplaceTarget fFindReplaceTarget;
 	private ChangePropertyAction fIgnoreWhitespace;
 	private List<ChangeCompareFilterPropertyAction> fCompareFilterActions = new ArrayList<>();
@@ -479,6 +480,12 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	private boolean copyOperationInProgress = false;
 	private IUndoableOperation copyUndoable = null;
 	private IOperationHistoryListener operationHistoryListener;
+
+	// https://github.com/eclipse-platform/eclipse.platform.ui/issues/2143
+	// calling w.getLineHeight(line) + w.getLineSpacing() +
+	// w.getLineVerticalIndent(line); again and again for the same line is too slow
+	// we therefore introduce a line height cache by viewer
+	private final Map<MergeSourceViewer, List<Integer>> lineHeightsByViewer = new HashMap<>();
 
 	/**
 	 * Preference key for highlighting current line.
@@ -503,7 +510,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 				return null;
 			final Viewer v = CompareUI.findStructureViewer(oldViewer, input, parent, configuration);
 			if (v != null) {
-				v.getControl().addDisposeListener(e -> v.removeSelectionChangedListener(InternalOutlineViewerCreator.this));
+				v.getControl().addDisposeListener(event -> v.removeSelectionChangedListener(InternalOutlineViewerCreator.this));
 				v.addSelectionChangedListener(this);
 			}
 
@@ -583,7 +590,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		private ISelection fSelection;
 		private int fTopIndex = -1;
 		private boolean fNeedsValidation = false;
-		private WrapMergeSourceViewer fSourceViewer;
+		private MergeSourceViewer fSourceViewer;
 
 		public ContributorInfo(WrapTextMergeViewer viewer, Object element, char leg) {
 			fViewer = viewer;
@@ -679,7 +686,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			return null;
 		}
 
-		public void setDocument(WrapMergeSourceViewer viewer, boolean isEditable) {
+		public void setDocument(MergeSourceViewer viewer, boolean isEditable) {
 			// Ensure that this method is only called once
 			Assert.isTrue(fSourceViewer == null);
 			fSourceViewer = viewer;
@@ -701,7 +708,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		/*
 		 * Returns true if a new Document could be installed.
 		 */
-		private boolean internalSetDocument(WrapMergeSourceViewer tp) {
+		private boolean internalSetDocument(MergeSourceViewer tp) {
 
 			if (tp == null)
 				return false;
@@ -781,7 +788,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		/*
 		 * The viewer document is the same but the range has changed
 		 */
-		private void updateViewerDocumentRange(WrapMergeSourceViewer tp, Position range) {
+		private void updateViewerDocumentRange(MergeSourceViewer tp, Position range) {
 			tp.setRegion(range);
 			if (this.fViewer.fSubDoc) {
 				if (range != null) {
@@ -796,7 +803,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		/*
 		 * The viewer has a new document
 		 */
-		private void updateViewerDocument(WrapMergeSourceViewer tp, IDocument document, Position range) {
+		private void updateViewerDocument(MergeSourceViewer tp, IDocument document, Position range) {
 			unsetDocument(tp);
 			if (document == null)
 				return;
@@ -830,7 +837,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			document.addPositionUpdater(this.fViewer.fPositionUpdater);
 		}
 
-		private void unsetDocument(WrapMergeSourceViewer tp) {
+		private void unsetDocument(MergeSourceViewer tp) {
 			IDocument oldDoc= internalGetDocument(tp);
 			if (oldDoc != null) {
 				tp.rememberDocument(null);
@@ -960,7 +967,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 				DocumentManager.remove(doc);
 		}
 
-		private IDocument internalGetDocument(WrapMergeSourceViewer tp) {
+		private IDocument internalGetDocument(MergeSourceViewer tp) {
 			IDocument oldDoc= tp.getSourceViewer().getDocument();
 			if (oldDoc == null) {
 				oldDoc= tp.getRememberedDocument();
@@ -1114,7 +1121,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			return fElement;
 		}
 
-		public void cacheSelection(WrapMergeSourceViewer viewer) {
+		public void cacheSelection(MergeSourceViewer viewer) {
 			if (viewer == null) {
 				this.fSelection = null;
 				this.fTopIndex = -1;
@@ -1124,7 +1131,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			}
 		}
 
-		public void updateSelection(WrapMergeSourceViewer viewer, boolean includeScroll) {
+		public void updateSelection(MergeSourceViewer viewer, boolean includeScroll) {
 			if (fSelection != null)
 				viewer.getSourceViewer().setSelection(fSelection);
 			if (includeScroll && fTopIndex != -1) {
@@ -1307,9 +1314,9 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	}
 
 	private class ChangeHighlighter implements ITextPresentationListener {
-		private final WrapMergeSourceViewer viewer;
+		private final MergeSourceViewer viewer;
 
-		public ChangeHighlighter(WrapMergeSourceViewer viewer) {
+		public ChangeHighlighter(MergeSourceViewer viewer) {
 			this.viewer = viewer;
 		}
 
@@ -1375,14 +1382,14 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		}
 
 		private IFindReplaceTarget getTarget() {
-			return Optional.ofNullable(fFocusPart).map(WrapMergeSourceViewer::getSourceViewer)
+			return Optional.ofNullable(fFocusPart).map(MergeSourceViewer::getSourceViewer)
 					.map(SourceViewer::getFindReplaceTarget)
 					.orElse(null);
 		}
 
 		@Override
 		public Point getSelection() {
-			return Optional.ofNullable(getTarget()).map(target -> target.getSelection())
+			return Optional.ofNullable(getTarget()).map(IFindReplaceTarget::getSelection)
 					.orElse(new Point(-1, -1));
 		}
 
@@ -1527,7 +1534,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	public WrapTextMergeViewer(Composite parent, int style, CompareConfiguration configuration) {
 		super(style, ResourceBundle.getBundle(BUNDLE_NAME), configuration);
 
-		operationHistoryListener = event -> WrapTextMergeViewer.this.historyNotification(event);
+		operationHistoryListener = WrapTextMergeViewer.this::historyNotification;
 		OperationHistoryFactory.getOperationHistory()
 				.addOperationHistoryListener(operationHistoryListener);
 
@@ -1536,6 +1543,12 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			public ITokenComparator createTokenComparator(String line) {
 				return WrapTextMergeViewer.this.createTokenComparator(line);
 			}
+
+			@Override
+			public Optional<IIgnoreWhitespaceContributor> createIgnoreWhitespaceContributor(IDocument document) {
+				return WrapTextMergeViewer.this.createIgnoreWhitespaceContributor(document);
+			}
+
 			@Override
 			public CompareConfiguration getCompareConfiguration() {
 				return WrapTextMergeViewer.this.getCompareConfiguration();
@@ -1617,7 +1630,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 		fIsMac= Util.isMac();
 
-		fPreferenceChangeListener= event -> WrapTextMergeViewer.this.handlePropertyChangeEvent(event);
+		fPreferenceChangeListener= WrapTextMergeViewer.this::handlePropertyChangeEvent;
 
 		fPreferenceStore= createChainedPreferenceStore();
 		if (fPreferenceStore != null) {
@@ -1664,8 +1677,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		updateFont();
 	}
 
-	private static class LineNumberRulerToggleAction extends WrapTextEditorPropertyAction {
-		public LineNumberRulerToggleAction(String label, WrapMergeSourceViewer[] viewers, String preferenceKey) {
+	private static class LineNumberRulerToggleAction extends TextEditorPropertyAction {
+		public LineNumberRulerToggleAction(String label, MergeSourceViewer[] viewers, String preferenceKey) {
 			super(label, viewers, preferenceKey);
 		}
 
@@ -1710,7 +1723,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	}
 
 	private String getSymbolicFontName() {
-		Class<?> clazz = TextMergeViewer.class;
+		Class<?> clazz= getClass();
 		do {
 			String fontName= clazz.getName();
 			if (JFaceResources.getFontRegistry().hasValueFor(fontName))
@@ -1874,6 +1887,21 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	}
 
 	/**
+	 * Creates an <code>IIgnoreWhitespaceContributor</code> which allows to hook
+	 * into the ignore whitespace logic in the compare viewer. Tool specific
+	 * implementations can overrule which whitespaces can be ignored and which not
+	 * (e.g. whitespaces in literals).
+	 *
+	 * @return a IIgnoreWhitespaceContributor which allows to overrule the platform
+	 *         based whitespace ignore logic in the compare view. Default
+	 *         implementation doesn't supply a contributor.
+	 * @since 3.9
+	 */
+	protected Optional<IIgnoreWhitespaceContributor> createIgnoreWhitespaceContributor(IDocument document) {
+		return Optional.empty();
+	}
+
+	/**
 	 * Setup the given document for use with this viewer. By default,
 	 * the partitioner returned from {@link #getDocumentPartitioner()}
 	 * is registered as the default partitioner for the document.
@@ -1998,8 +2026,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		disposeCompareFilterActions(false);
 
 		if (fSourceViewerDecorationSupport != null) {
-			for (Iterator<SourceViewerDecorationSupport> iterator = fSourceViewerDecorationSupport.iterator(); iterator.hasNext();) {
-				iterator.next().dispose();
+			for (SourceViewerDecorationSupport sourceViewerDecorationSupport : fSourceViewerDecorationSupport) {
+				sourceViewerDecorationSupport.dispose();
 			}
 			fSourceViewerDecorationSupport = null;
 		}
@@ -2016,12 +2044,6 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		fRight = null;
 
 		if (fColors != null) {
-			Iterator<Color> i= fColors.values().iterator();
-			while (i.hasNext()) {
-				Color color= i.next();
-				if (!color.isDisposed())
-					color.dispose();
-			}
 			fColors= null;
 		}
 		// don't add anything here, disposing colors should be done last
@@ -2043,16 +2065,14 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	 */
 	@Override
 	protected void createControls(Composite composite) {
-		PlatformUI.getWorkbench().getHelpSystem().setHelp(composite, ICompareContextIds.TEXT_MERGE_VIEW);
+		if (PlatformUI.isWorkbenchRunning()) {
+			PlatformUI.getWorkbench().getHelpSystem().setHelp(composite, ICompareContextIds.TEXT_MERGE_VIEW);
+		}
 
 		// 1st row
 		if (fMarginWidth > 0) {
-			fAncestorCanvas= new BufferedCanvas(composite, SWT.NONE) {
-				@Override
-				public void doPaint(GC gc) {
-					paintSides(gc, fAncestor, fAncestorCanvas, false);
-				}
-			};
+			fAncestorCanvas = new Canvas(composite, SWT.DOUBLE_BUFFERED);
+			fAncestorCanvas.addPaintListener(event -> paintSides(event.gc, fAncestor, fAncestorCanvas, false));
 			fAncestorCanvas.addMouseListener(
 				new MouseAdapter() {
 					@Override
@@ -2080,12 +2100,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 		// 2nd row
 		if (fMarginWidth > 0) {
-			fLeftCanvas= new BufferedCanvas(composite, SWT.NONE) {
-				@Override
-				public void doPaint(GC gc) {
-					paintSides(gc, fLeft, fLeftCanvas, false);
-				}
-			};
+			fLeftCanvas = new Canvas(composite, SWT.DOUBLE_BUFFERED);
+			fLeftCanvas.addPaintListener(event -> paintSides(event.gc, fLeft, fLeftCanvas, false));
 			fLeftCanvas.addMouseListener(
 				new MouseAdapter() {
 					@Override
@@ -2140,12 +2156,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		hsynchViewport(fRight.getSourceViewer(), fAncestor.getSourceViewer(), fLeft.getSourceViewer());
 
 		if (fMarginWidth > 0) {
-			fRightCanvas= new BufferedCanvas(composite, SWT.NONE) {
-				@Override
-				public void doPaint(GC gc) {
-					paintSides(gc, fRight, fRightCanvas, fSynchronizedScrolling);
-				}
-			};
+			fRightCanvas = new Canvas(composite, SWT.DOUBLE_BUFFERED);
+			fRightCanvas.addPaintListener(event -> paintSides(event.gc, fRight, fRightCanvas, fSynchronizedScrolling));
 			fRightCanvas.addMouseListener(
 				new MouseAdapter() {
 					@Override
@@ -2164,23 +2176,22 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		fVScrollBar.setIncrement(1);
 		fVScrollBar.setVisible(true);
 		fVScrollBar.addListener(SWT.Selection,
-			e -> {
-				int vpos= ((ScrollBar) e.widget).getSelection();
+			event -> {
+				int vpos= ((ScrollBar) event.widget).getSelection();
 				synchronizedScrollVertical(vpos);
 			}
 		);
 
-		fBirdsEyeCanvas= new BufferedCanvas(composite, SWT.NONE) {
-			@Override
-			public void doPaint(GC gc) {
-				updateVScrollBar(); // Update scroll bar here as initially viewport height is wrong				
-				paintBirdsEyeView(this, gc);
-			}
-		};
+		fBirdsEyeCanvas = new Canvas(composite, SWT.DOUBLE_BUFFERED);
+		fBirdsEyeCanvas.addPaintListener(event -> {
+			updateVScrollBar(); // Update scroll bar here as initially viewport height is wrong
+			paintBirdsEyeView((Canvas) event.widget, event.gc);
+		});
+
 		fBirdsEyeCanvas.addMouseListener(
 			new MouseAdapter() {
 				@Override
-				public void mouseDown(MouseEvent e) {					
+				public void mouseDown(MouseEvent e) {
 					setCurrentDiff2(handlemouseInBirdsEyeView(fBirdsEyeCanvas, e.y), true);
 				}
 			}
@@ -2238,16 +2249,15 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		}
 	}
 
-	private Diff handleMouseInSides(Canvas canvas, WrapMergeSourceViewer tp, int my) {
+	private Diff handleMouseInSides(Canvas canvas, MergeSourceViewer tp, int my) {
 
-		int lineHeight= tp.getSourceViewer().getTextWidget().getLineHeight();
 		int visibleHeight= tp.getViewportHeight();
 
 		if (! fHighlightRanges)
 			return null;
 
 		if (fMerger.hasChanges()) {
-			int shift= tp.getVerticalScrollOffset() + (2-LW);
+			int shift = calculateShift(tp) + (2 - LW);
 
 			Point region= new Point(0, 0);
 			char leg = getLeg(tp);
@@ -2259,16 +2269,10 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 				if (fShowCurrentOnly2 && !isCurrentDiff(diff))
 					continue;
 
-				//tp.getLineRange(diff.getPosition(leg), region);
-				//int y= (region.x * lineHeight) + shift;
-				//int h= region.y * lineHeight;
-				
-				
-				Point point = fLeft.getLocationRange(diff.getPosition(LEFT_CONTRIBUTOR), region);
-				int y = point.x + shift;
-				int h = point.y + lineHeight;
-				
-
+				tp.getLineRange(diff.getPosition(leg), region);
+				region.x -= tp.getDocumentRegionOffset();
+				int y = getHeightBetweenLines(tp, 0, region.x) + shift;
+				int h = getHeightBetweenLines(tp, region.x, region.x + region.y);
 
 				if (y+h < 0)
 					continue;
@@ -2287,7 +2291,6 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		if (! fSynchronizedScrolling)
 			return null;
 
-		int lineHeight= fLeft.getSourceViewer().getTextWidget().getLineHeight();
 		int visibleHeight= fRight.getViewportHeight();
 
 		Point size= canvas.getSize();
@@ -2297,8 +2300,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			return null;
 
 		if (fMerger.hasChanges()) {
-			int lshift= fLeft.getVerticalScrollOffset();
-			int rshift= fRight.getVerticalScrollOffset();
+			int lshift = calculateShift(fLeft);
+			int rshift = calculateShift(fRight);
 
 			Point region= new Point(0, 0);
 
@@ -2309,25 +2312,16 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 				if (fShowCurrentOnly2 && !isCurrentDiff(diff))
 					continue;
-				
-				
 
-				/*fLeft.getLineRange(diff.getPosition(LEFT_CONTRIBUTOR), region);
-				int ly= (region.x * lineHeight) + lshift;
-				int lh= region.y * lineHeight;
+				fLeft.getLineRange(diff.getPosition(LEFT_CONTRIBUTOR), region);
+				region.x -= fLeft.getDocumentRegionOffset();
+				int ly = getHeightBetweenLines(fLeft, 0, region.x) + lshift;
+				int lh = getHeightBetweenLines(fLeft, region.x, region.x + region.y);
 
 				fRight.getLineRange(diff.getPosition(RIGHT_CONTRIBUTOR), region);
-				int ry= (region.x * lineHeight) + rshift;
-				int rh= region.y * lineHeight;*/
-				
-				Point left = fLeft.getLocationRange(diff.getPosition(LEFT_CONTRIBUTOR), region);				
-				int ly = left.x + lshift;
-				int lh = left.y + lineHeight;
-				
-				Point right = fRight.getLocationRange(diff.getPosition(RIGHT_CONTRIBUTOR), region);				
-				int ry = right.x + rshift;
-				int rh = right.y + lineHeight;
-				
+				region.x -= fRight.getDocumentRegionOffset();
+				int ry = getHeightBetweenLines(fRight, 0, region.x) + rshift;
+				int rh = getHeightBetweenLines(fRight, region.x, region.x + region.y);
 
 				if (Math.max(ly+lh, ry+rh) < 0)
 					continue;
@@ -2470,12 +2464,11 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	@Override
 	protected final Control createCenterControl(Composite parent) {
 		if (fSynchronizedScrolling) {
-			final Canvas canvas= new BufferedCanvas(parent, SWT.NONE) {
-				@Override
-				public void doPaint(GC gc) {
-					paintCenter(this, gc);
-				}
-			};
+
+
+			final Canvas canvas = new Canvas(parent, SWT.DOUBLE_BUFFERED);
+
+			canvas.addPaintListener(event -> paintCenter((Canvas) event.widget, event.gc));
 			new HoverResizer(canvas, HORIZONTAL);
 
 			Cursor normalCursor= canvas.getDisplay().getSystemCursor(SWT.CURSOR_ARROW);
@@ -2486,7 +2479,6 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			fLeftToRightButton.setText(COPY_LEFT_TO_RIGHT_INDICATOR);
 			fLeftToRightButton.setToolTipText(
 					Utilities.getString(getResourceBundle(), "action.CopyDiffLeftToRight.tooltip")); //$NON-NLS-1$
-			fLeftToRightButton.pack();
 			fLeftToRightButton.setVisible(false);
 			fLeftToRightButton.addSelectionListener(
 				new SelectionAdapter() {
@@ -2502,7 +2494,6 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			fRightToLeftButton.setText(COPY_RIGHT_TO_LEFT_INDICATOR);
 			fRightToLeftButton.setToolTipText(
 					Utilities.getString(getResourceBundle(), "action.CopyDiffRightToLeft.tooltip")); //$NON-NLS-1$
-			fRightToLeftButton.pack();
 			fRightToLeftButton.setVisible(false);
 			fRightToLeftButton.addSelectionListener(
 					new SelectionAdapter() {
@@ -2654,8 +2645,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	/*
 	 * Creates and initializes a text part.
 	 */
-	private WrapMergeSourceViewer createPart(Composite parent) {
-		final WrapMergeSourceViewer viewer = new WrapMergeSourceViewer(
+	private MergeSourceViewer createPart(Composite parent) {
+		final MergeSourceViewer viewer = new MergeSourceViewer(
 				createSourceViewer(parent, getDirection()),
 				getResourceBundle(), getCompareConfiguration().getContainer());
 		final StyledText te= viewer.getSourceViewer().getTextWidget();
@@ -2663,9 +2654,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		if (!fConfirmSave)
 			viewer.hideSaveAction();
 
-		te.addPaintListener(
-			e -> paint(e, viewer)
-		);
+		te.addPaintListener(event -> paint(event, viewer));
 		te.addKeyListener(
 			new KeyAdapter() {
 				@Override
@@ -2723,7 +2712,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		return viewer;
 	}
 
-	private void setActiveViewer(WrapMergeSourceViewer viewer, boolean activate) {
+	private void setActiveViewer(MergeSourceViewer viewer, boolean activate) {
 		connectContributedActions(viewer, activate);
 		if (activate) {
 			fFocusPart= viewer;
@@ -2740,7 +2729,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		return support;
 	}
 
-	private void contributeFindAction(WrapMergeSourceViewer viewer) {
+	private void contributeFindAction(MergeSourceViewer viewer) {
 		IAction action;
 		IWorkbenchPart wp = getCompareConfiguration().getContainer().getWorkbenchPart();
 		if (wp != null)
@@ -2748,21 +2737,21 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		else
 			action = new FindReplaceAction(getResourceBundle(), "Editor.FindReplace.", viewer.getSourceViewer().getControl().getShell(), getFindReplaceTarget()); //$NON-NLS-1$
 		action.setActionDefinitionId(IWorkbenchCommandConstants.EDIT_FIND_AND_REPLACE);
-		viewer.addAction(WrapMergeSourceViewer.FIND_ID, action);
+		viewer.addAction(MergeSourceViewer.FIND_ID, action);
 	}
 
-	private void contributeGotoLineAction(WrapMergeSourceViewer viewer) {
+	private void contributeGotoLineAction(MergeSourceViewer viewer) {
 		IAction action = new GotoLineAction(viewer.getAdapter(ITextEditor.class));
 		action.setActionDefinitionId(ITextEditorActionDefinitionIds.LINE_GOTO);
-		viewer.addAction(WrapMergeSourceViewer.GOTO_LINE_ID, action);
+		viewer.addAction(MergeSourceViewer.GOTO_LINE_ID, action);
 	}
 
-	private void contributeChangeEncodingAction(WrapMergeSourceViewer viewer) {
+	private void contributeChangeEncodingAction(MergeSourceViewer viewer) {
 		IAction action = new ChangeEncodingAction(getTextEditorAdapter());
-		viewer.addAction(WrapMergeSourceViewer.CHANGE_ENCODING_ID, action);
+		viewer.addAction(MergeSourceViewer.CHANGE_ENCODING_ID, action);
 	}
 
-	private void contributeDiffBackgroundListener(final WrapMergeSourceViewer viewer) {
+	private void contributeDiffBackgroundListener(final MergeSourceViewer viewer) {
 		viewer.getSourceViewer().getTextWidget().addLineBackgroundListener(
 				event -> {
 					StyledText textWidget = viewer.getSourceViewer().getTextWidget();
@@ -2790,7 +2779,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 				});
 	}
 
-	private void connectGlobalActions(final WrapMergeSourceViewer part) {
+	private void connectGlobalActions(final MergeSourceViewer part) {
 		if (fHandlerService != null) {
 			if (part != null)
 				part.updateActions();
@@ -2806,7 +2795,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		}
 	}
 
-	private void connectContributedActions(final WrapMergeSourceViewer viewer, final boolean connect) {
+	private void connectContributedActions(final MergeSourceViewer viewer, final boolean connect) {
 		if (fHandlerService != null) {
 			fHandlerService.updatePaneActionHandlers(() -> {
 				if (viewer != null) {
@@ -3095,16 +3084,9 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			getSourceViewerDecorationSupport(sourceViewer).install(fPreferenceStore);
 	}
 
-	private boolean isCursorLinePainterInstalled(SourceViewer viewer) {
-		Listener[] listeners = viewer.getTextWidget().getListeners(3001/*StyledText.LineGetBackground*/);
-		for (Listener l : listeners) {
-			if (l instanceof TypedListener) {
-				TypedListener listener = (TypedListener) l;
-				if (listener.getEventListener() instanceof CursorLinePainter)
-					return true;
-			}
-		}
-		return false;
+	private boolean isCursorLinePainterInstalled(SourceViewer viewer) {	
+		return viewer.getTextWidget().getTypedListeners(ST.LineGetBackground, CursorLinePainter.class) //
+				.findFirst().isPresent();
 	}
 
 	/**
@@ -3357,7 +3339,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	 */
 	@Override
 	protected byte[] getContents(boolean left) {
-		WrapMergeSourceViewer v= left ? fLeft : fRight;
+		MergeSourceViewer v= left ? fLeft : fRight;
 		if (v != null) {
 			IDocument d= v.getSourceViewer().getDocument();
 			if (d != null) {
@@ -3506,7 +3488,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	/*
 	 * Track selection changes to update the current Diff.
 	 */
-	private void handleSelectionChanged(WrapMergeSourceViewer tw) {
+	private void handleSelectionChanged(MergeSourceViewer tw) {
 		Point p= tw.getSourceViewer().getSelectedRange();
 		Diff d= findDiff(tw, p.x, p.x+p.y);
 		updateStatus(d);
@@ -3626,14 +3608,17 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	private boolean isNavigationButtonEnabled(boolean down, boolean deep) {
 		String value = fPreferenceStore
 				.getString(ICompareUIConstants.PREF_NAVIGATION_END_ACTION);
-		if (value.equals(ICompareUIConstants.PREF_VALUE_DO_NOTHING)) {
+		switch (value) {
+		case ICompareUIConstants.PREF_VALUE_DO_NOTHING:
 			return getNextVisibleDiff(down, deep) != null;
-		} else if (value.equals(ICompareUIConstants.PREF_VALUE_LOOP)) {
+		case ICompareUIConstants.PREF_VALUE_LOOP:
 			return isNavigationPossible();
-		} else if (value.equals(ICompareUIConstants.PREF_VALUE_NEXT)) {
+		case ICompareUIConstants.PREF_VALUE_NEXT:
 			return getNextVisibleDiff(down, deep) != null || hasNextElement(down);
-		} else if (value.equals(ICompareUIConstants.PREF_VALUE_PROMPT)) {
+		case ICompareUIConstants.PREF_VALUE_PROMPT:
 			return isNavigationPossible() || hasNextElement(true);
+		default:
+			break;
 		}
 		Assert.isTrue(false);
 		return false;
@@ -3740,7 +3725,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		return Integer.toString(diffNumber);
 	}
 
-	private String getDiffRange(WrapMergeSourceViewer v, Position pos) {
+	private String getDiffRange(MergeSourceViewer v, Position pos) {
 		Point p= v.getLineRange(pos, new Point(0, 0));
 		int startLine= p.x+1;
 		int endLine= p.x+p.y;
@@ -3758,7 +3743,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	 *
 	 * @return a description of the cursor position
 	 */
-	private String getCursorPosition(WrapMergeSourceViewer v) {
+	private String getCursorPosition(MergeSourceViewer v) {
 		if (v != null) {
 			StyledText styledText= v.getSourceViewer().getTextWidget();
 
@@ -3913,8 +3898,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		boolean needsLeftPainter= !isEditorBacked(fLeft.getSourceViewer());
 		boolean needsRightPainter= !isEditorBacked(fRight.getSourceViewer());
 		boolean needsAncestorPainter= !isEditorBacked(fAncestor.getSourceViewer());
-		showWhitespaceAction = new WrapShowWhitespaceAction(
-				new WrapMergeSourceViewer[] {fLeft, fRight, fAncestor},
+		showWhitespaceAction = new ShowWhitespaceAction(
+				new MergeSourceViewer[] {fLeft, fRight, fAncestor},
 				new boolean[] {needsLeftPainter, needsRightPainter, needsAncestorPainter });
 		// showWhitespaceAction is registered as global action in connectGlobalActions
 		fLeft.addAction(ITextEditorActionDefinitionIds.SHOW_WHITESPACE_CHARACTERS, showWhitespaceAction);
@@ -3923,7 +3908,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		fHandlerService.registerAction(showWhitespaceAction, ITextEditorActionDefinitionIds.SHOW_WHITESPACE_CHARACTERS);
 
 		toggleLineNumbersAction = new LineNumberRulerToggleAction(CompareMessages.TextMergeViewer_16,
-				new WrapMergeSourceViewer[] { fLeft, fRight, fAncestor },
+				new MergeSourceViewer[] { fLeft, fRight, fAncestor },
 				AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER);
 		fHandlerService.registerAction(toggleLineNumbersAction, ITextEditorActionDefinitionIds.LINENUMBER_TOGGLE);
 	}
@@ -3938,15 +3923,14 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		Object current = getCompareConfiguration()
 				.getProperty(ChangeCompareFilterPropertyAction.COMPARE_FILTER_ACTIONS);
 		boolean currentFiltersMatch = false;
-		if (current != null && current instanceof List
-				&& ((List<?>) current).size() == compareFilterDescriptors.length) {
+		if (current instanceof List && ((List<?>) current).size() == compareFilterDescriptors.length) {
 			currentFiltersMatch = true;
 			@SuppressWarnings("unchecked")
 			List<ChangeCompareFilterPropertyAction> currentFilterActions = (List<ChangeCompareFilterPropertyAction>) current;
 			for (CompareFilterDescriptor compareFilterDescriptor : compareFilterDescriptors) {
 				boolean match = false;
-				for (int j = 0; j < currentFilterActions.size(); j++) {
-					if (compareFilterDescriptor.getFilterId().equals(currentFilterActions.get(j).getFilterId())) {
+				for (ChangeCompareFilterPropertyAction currentFilterAction : currentFilterActions) {
+					if (compareFilterDescriptor.getFilterId().equals(currentFilterAction.getFilterId())) {
 						match = true;
 						break;
 					}
@@ -3990,18 +3974,14 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 					fCompareFilterActions);
 			getCompareConfiguration().setProperty(ChangeCompareFilterPropertyAction.COMPARE_FILTERS_INITIALIZING, null);
 		} else {
-			for (int i = 0; i < fCompareFilterActions.size(); i++) {
-				fCompareFilterActions.get(i).setInput(input, ancestor, left, right);
+			for (ChangeCompareFilterPropertyAction action : fCompareFilterActions) {
+				action.setInput(input, ancestor, left, right);
 			}
 		}
 	}
 
 	private void disposeCompareFilterActions(boolean updateActionBars) {
-		Iterator<ChangeCompareFilterPropertyAction> compareFilterActionsIterator = fCompareFilterActions
-				.iterator();
-		while (compareFilterActionsIterator.hasNext()) {
-			ChangeCompareFilterPropertyAction compareFilterAction = compareFilterActionsIterator
-					.next();
+		for (ChangeCompareFilterPropertyAction compareFilterAction : fCompareFilterActions) {
 			fLeft.removeTextAction(compareFilterAction);
 			fRight.removeTextAction(compareFilterAction);
 			fAncestor.removeTextAction(compareFilterAction);
@@ -4037,6 +4017,16 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 	@Override
 	protected void handlePropertyChangeEvent(PropertyChangeEvent event) {
+
+		// Property changes might change the height of lines,
+		// which means the heights cache should be cleared.
+		// But the actual height change of lines in StyledText does not happen in this
+		// method.
+		// There are other property change listeners for example:
+		// AbstractTextEditor.PropertyChangeListener,
+		// and these handle the height changes of StyledText.
+		lineHeightsByViewer.clear();
+
 		String key= event.getProperty();
 
 		if (key.equals(CompareConfiguration.IGNORE_WHITESPACE)
@@ -4231,6 +4221,56 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		}
 	}
 
+	/**
+	 *
+	 * The height in the Text Widget between the two specified lines. The line
+	 * height also depends on spacing and vertical indent.
+	 *
+	 * @param tp
+	 * @param line
+	 * @return
+	 */
+	private int getHeightBetweenLines(MergeSourceViewer tp, int fromLine, int toLine) {
+
+		if (fromLine == toLine)
+			return 0;
+		StyledText w = tp.getSourceViewer().getTextWidget();
+		List<Integer> lineHeights = this.lineHeightsByViewer.get(tp);
+		if (lineHeights == null) {
+			lineHeights = new ArrayList<>();
+			lineHeights.addAll(Collections.nCopies(w.getLineCount(), null));
+			this.lineHeightsByViewer.put(tp, lineHeights);
+			tp.getSourceViewer().addTextListener(event -> {
+				List<Integer> lineHeightsList = lineHeightsByViewer.get(tp);
+				if (lineHeightsList != null) {
+					lineHeightsList.clear();
+					lineHeightsList.addAll(Collections.nCopies(w.getLineCount(), null));
+				}
+			});
+		}
+
+		int lineSpacing = w.getLineSpacing();
+
+		// If the linenumber is higher than the number of lines, we should prevent an
+		// IndexOutOfBoundsException
+		if (toLine > w.getLineCount()){
+			int lineHeight = tp.getSourceViewer().getTextWidget().getLineHeight();
+			return (toLine - fromLine) * (lineHeight + w.getLineVerticalIndent(0)) + lineSpacing;
+		}
+
+		int height = 0;
+		for (int i = fromLine; i < toLine; i++) {
+			Integer heightAtLine = lineHeights.get(i);
+			if (heightAtLine == null) {
+				int lineOffset = w.getOffsetAtLine(i);
+				heightAtLine = w.getLineHeight(lineOffset) + lineSpacing + w.getLineVerticalIndent(i);
+				lineHeights.set(i, heightAtLine);
+			}
+			height += heightAtLine;
+		}
+		return height;
+	}
+
 	private void invalidateLines() {
 		if (isThreeWay() && isAncestorVisible()) {
 			if (Utilities.okToUse(fAncestorCanvas))
@@ -4267,6 +4307,12 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	}
 
 	private void paintCenter(Canvas canvas, GC g) {
+		if (fLeft == null || fRight == null) {
+			// The paint event for the center control can occur before the left / right controls are created.
+			// simply ignore it in this case.
+			return;
+		}
+
 		Display display= canvas.getDisplay();
 
 		checkForColorUpdate(display);
@@ -4274,8 +4320,6 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		if (! fSynchronizedScrolling)
 			return;
 
-		int lineHeightLeft= fLeft.getSourceViewer().getTextWidget().getLineHeight();
-		int lineHeightRight= fRight.getSourceViewer().getTextWidget().getLineHeight();
 		int visibleHeight= fRight.getViewportHeight();
 
 		Point size= canvas.getSize();
@@ -4294,8 +4338,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			return;
 
 		if (fMerger.hasChanges()) {
-			int lshift= fLeft.getVerticalScrollOffset();
-			int rshift= fRight.getVerticalScrollOffset();
+			int lshift = calculateShift(fLeft);
+			int rshift = calculateShift(fRight);
 
 			Point region= new Point(0, 0);
 
@@ -4308,27 +4352,18 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 				if (fShowCurrentOnly2 && !isCurrentDiff(diff))
 					continue;
 
-				Point left = fLeft.getLocationRange(diff.getPosition(LEFT_CONTRIBUTOR), region);			
-				int ly = left.x + lshift;
-				int lh = left.y + lineHeightLeft;
+				fLeft.getLineRange(diff.getPosition(LEFT_CONTRIBUTOR), region);
+				region.x -= fLeft.getDocumentRegionOffset();
+				int ly = getHeightBetweenLines(fLeft, 0, region.x) + lshift;
+				int lh = getHeightBetweenLines(fLeft, region.x, region.x + region.y);
 
-				//fLeft.getLineRange(diff.getPosition(LEFT_CONTRIBUTOR), region);
-				//int ly= (region.x * lineHeightLeft) + lshift;
-				//int lh= region.y * lineHeightLeft;
-
-				
-				Point right = fRight.getLocationRange(diff.getPosition(RIGHT_CONTRIBUTOR), region);
-				int ry = right.x + rshift;
-				int rh = right.y + lineHeightRight;
-				
-				/*fRight.getLineRange(diff.getPosition(RIGHT_CONTRIBUTOR), region);
-				int ry= (region.x * lineHeightRight) + rshift;
-				int rh= region.y * lineHeightRight;*/
+				fRight.getLineRange(diff.getPosition(RIGHT_CONTRIBUTOR), region);
+				region.x -= fRight.getDocumentRegionOffset();
+				int ry = getHeightBetweenLines(fRight, 0, region.x) + rshift;
+				int rh = getHeightBetweenLines(fRight, region.x, region.x + region.y);
 
 				if (Math.max(ly+lh, ry+rh) < 0)
 					continue;
-
-				
 				if (Math.min(ly, ry) >= visibleHeight)
 					break;
 
@@ -4424,11 +4459,14 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		}
 	}
 
-	private void paintSides(GC g, WrapMergeSourceViewer tp, Canvas canvas, boolean right) {
+	private int calculateShift(MergeSourceViewer tp) {
+		return tp.getSourceViewer().getTopInset() - tp.getSourceViewer().getTextWidget().getTopPixel();
+	}
+
+	private void paintSides(GC g, MergeSourceViewer tp, Canvas canvas, boolean right) {
 
 		Display display= canvas.getDisplay();
 
-		int lineHeight= tp.getSourceViewer().getTextWidget().getLineHeight();
 		int visibleHeight= tp.getViewportHeight();
 
 		Point size= canvas.getSize();
@@ -4451,7 +4489,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 		if (fMerger.hasChanges()) {
 			boolean allOutgoing = allOutgoing();
-			int shift= tp.getVerticalScrollOffset() + (2-LW);
+			int shift = calculateShift(tp) + (2 - LW);
 
 			Point region= new Point(0, 0);
 			char leg = getLeg(tp);
@@ -4462,16 +4500,11 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 				if (fShowCurrentOnly2 && !isCurrentDiff(diff))
 					continue;
-				
-				/*tp.getLineRange(diff.getPosition(leg), region);
-				int y= (region.x * lineHeight) + shift;
-				int h= region.y * lineHeight;*/
-				
-				
-				Point tpPoint = tp.getLocationRange(diff.getPosition(leg), region);			
-				int y = tpPoint.x + shift;
-				int h = tpPoint.y + lineHeight;
-				
+
+				tp.getLineRange(diff.getPosition(leg), region);
+				region.x -= tp.getDocumentRegionOffset();
+				int y = getHeightBetweenLines(tp, 0, region.x) + shift;
+				int h = getHeightBetweenLines(tp, region.x, region.x + region.y);
 
 				if (y+h < 0)
 					continue;
@@ -4504,7 +4537,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		return allOutgoing;
 	}
 
-	private void paint(PaintEvent event, WrapMergeSourceViewer tp) {
+	private void paint(PaintEvent event, MergeSourceViewer tp) {
 
 		if (! fHighlightRanges)
 			return;
@@ -4516,9 +4549,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 		Display display= canvas.getDisplay();
 
-		int lineHeight= tp.getSourceViewer().getTextWidget().getLineHeight();
 		int w= canvas.getSize().x;
-		int shift= tp.getVerticalScrollOffset() + (2-LW);
+		int shift = calculateShift(tp) + (2 - LW);
 		int maxh= event.y+event.height; 	// visibleHeight
 
 		shift += fTopInset;
@@ -4535,13 +4567,10 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			if (fShowCurrentOnly && !isCurrentDiff(diff))
 				continue;
 
-			/*tp.getLineRange(diff.getPosition(leg), range);
-			int y= (range.x * lineHeight) + shift;
-			int h= range.y * lineHeight;*/
-			
-			Point tpPoint = tp.getLocationRange(diff.getPosition(leg), range);			
-			int y = tpPoint.x + shift;
-			int h = tpPoint.y + lineHeight;
+			tp.getLineRange(diff.getPosition(leg), range);
+			range.x -= tp.getDocumentRegionOffset();
+			int y = getHeightBetweenLines(tp, 0, range.x) + shift;
+			int h = getHeightBetweenLines(tp, range.x, range.x + range.y);
 
 			if (y+h < event.y)
 				continue;
@@ -4615,7 +4644,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		if (rgb == null)
 			return null;
 		if (fColors == null)
-			fColors= new HashMap<RGB, Color>(20);
+			fColors= new HashMap<>(20);
 		Color c= fColors.get(rgb);
 		if (c == null) {
 			c= new Color(display, rgb);
@@ -4628,7 +4657,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 	private Diff getNextVisibleDiff(boolean down, boolean deep) {
 		Diff diff= null;
-		WrapMergeSourceViewer part= getNavigationPart();
+		MergeSourceViewer part= getNavigationPart();
 		if (part == null)
 			return null;
 		Point s = part.getSourceViewer().getSelectedRange();
@@ -4648,7 +4677,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		return diff;
 	}
 
-	private Diff internalGetNextDiff(boolean down, boolean deep, WrapMergeSourceViewer part, Point s) {
+	private Diff internalGetNextDiff(boolean down, boolean deep, MergeSourceViewer part, Point s) {
 		if (fMerger.hasChanges()) {
 			if (down)
 				return findNext(part, s.x, s.x+s.y, deep);
@@ -4657,8 +4686,8 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		return null;
 	}
 
-	private WrapMergeSourceViewer getNavigationPart() {
-		WrapMergeSourceViewer part= fFocusPart;
+	private MergeSourceViewer getNavigationPart() {
+		MergeSourceViewer part= fFocusPart;
 		if (part == null)
 			part= fRight;
 		return part;
@@ -4776,16 +4805,16 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	 * If the range doesn't overlap with any range <code>null</code>
 	 * is returned.
 	 */
-	private Diff findDiff(WrapMergeSourceViewer tp, int rangeStart, int rangeEnd) {
+	private Diff findDiff(MergeSourceViewer tp, int rangeStart, int rangeEnd) {
 		char contributor = getLeg(tp);
 		return fMerger.findDiff(contributor, rangeStart, rangeEnd);
 	}
 
-	private Diff findNext(WrapMergeSourceViewer tp, int start, int end, boolean deep) {
+	private Diff findNext(MergeSourceViewer tp, int start, int end, boolean deep) {
 		return fMerger.findNext(getLeg(tp), start, end, deep);
 	}
 
-	private Diff findPrev(WrapMergeSourceViewer tp, int start, int end, boolean deep) {
+	private Diff findPrev(MergeSourceViewer tp, int start, int end, boolean deep) {
 		return fMerger.findPrev(getLeg(tp), start, end, deep);
 	}
 
@@ -4804,6 +4833,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	 * selected in both TextParts.
 	 */
 	private void setCurrentDiff(Diff d, boolean revealAndSelect, boolean deep) {
+
 //		if (d == fCurrentDiff)
 //			return;
 		boolean diffChanged = fCurrentDiff != d;
@@ -4849,6 +4879,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	 * Smart determines whether
 	 */
 	private void revealDiff(Diff d, boolean smart) {
+
 		boolean ancestorIsVisible= false;
 		boolean leftIsVisible= false;
 		boolean rightIsVisible= false;
@@ -4856,9 +4887,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		if (smart) {
 			Point region= new Point(0, 0);
 			// find the starting line of the diff in all text widgets
-			
-			
-			int ls= fLeft.getLineRange(d.getPosition(LEFT_CONTRIBUTOR), region).x;			
+			int ls= fLeft.getLineRange(d.getPosition(LEFT_CONTRIBUTOR), region).x;
 			int rs= fRight.getLineRange(d.getPosition(RIGHT_CONTRIBUTOR), region).x;
 
 			if (isThreeWay() && !isIgnoreAncestor()) {
@@ -4878,7 +4907,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		if (!leftIsVisible || !rightIsVisible) {
 			int avpos= 0, lvpos= 0, rvpos= 0;
 
-			WrapMergeSourceViewer allButThis= null;
+			MergeSourceViewer allButThis= null;
 			if (leftIsVisible) {
 				avpos= lvpos= rvpos= realToVirtualPosition(LEFT_CONTRIBUTOR, fLeft.getSourceViewer().getTopIndex());
 				allButThis= fLeft;
@@ -4934,10 +4963,9 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 			hscroll(fLeft);
 			hscroll(fRight);
 		}
-		
 	}
 
-	private static void reveal(WrapMergeSourceViewer v, Position p) {
+	private static void reveal(MergeSourceViewer v, Position p) {
 		if (v != null && p != null) {
 			StyledText st= v.getSourceViewer().getTextWidget();
 			if (st != null) {
@@ -4948,7 +4976,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		}
 	}
 
-	private static void hscroll(WrapMergeSourceViewer v) {
+	private static void hscroll(MergeSourceViewer v) {
 		if (v != null) {
 			StyledText st= v.getSourceViewer().getTextWidget();
 			if (st != null)
@@ -5147,7 +5175,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		return fMerger.realToVirtualPosition(contributor, vpos);
 	}
 
-	private void scrollVertical(int avpos, int lvpos, int rvpos, WrapMergeSourceViewer allBut) {
+	private void scrollVertical(int avpos, int lvpos, int rvpos, MergeSourceViewer allBut) {
 
 		int s= 0;
 
@@ -5186,23 +5214,24 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		fInScrolling= false;
 
 		if (isThreeWay() && fAncestorCanvas != null)
-			fAncestorCanvas.repaint();
+			fAncestorCanvas.redraw();
 
 		if (fLeftCanvas != null)
-			fLeftCanvas.repaint();
+			fLeftCanvas.redraw();
 
 		Control center= getCenterControl();
-		if (center instanceof BufferedCanvas)
-			((BufferedCanvas) center).repaint();
+		if (center instanceof Canvas)
+			center.redraw();
 
 		if (fRightCanvas != null)
-			fRightCanvas.repaint();
+			fRightCanvas.redraw();
 	}
 
 	/*
 	 * Updates Scrollbars with viewports.
 	 */
-	private void syncViewport(WrapMergeSourceViewer w) {
+	private void syncViewport(MergeSourceViewer w) {
+
 		if (fInScrolling)
 			return;
 
@@ -5220,8 +5249,6 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		}
 	}
 
-	/**
-	 */
 	private void updateVScrollBar() {
 
 		if (Utilities.okToUse(fVScrollBar) && fSynchronizedScrolling) {
@@ -5415,6 +5442,36 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 
 		updateVScrollBar();
 		updatePresentation();
+		updateToolbarLabel();
+	}
+
+	private void updateToolbarLabel() {
+		final String DIFF_COUNT_ID = "DiffCount"; //$NON-NLS-1$
+		boolean isUpdateNeeded = false;
+		ToolBarManager tbm = (ToolBarManager) getToolBarManager(fComposite.getParent());
+		int differenceCount = fMerger.changesCount();
+		if (tbm != null && tbm.getItems().length > 0) {
+
+			String label = MessageFormat.format(CompareMessages.TextMergeViewer_differences, differenceCount);
+			LabelContributionItem labelContributionItem = new LabelContributionItem(DIFF_COUNT_ID, label);
+
+			if (tbm.find(DIFF_COUNT_ID) != null) {
+				tbm.replaceItem(DIFF_COUNT_ID, labelContributionItem);
+				isUpdateNeeded = true;
+			} else if (tbm.find("diffLabel") != null) { //$NON-NLS-1$
+				tbm.appendToGroup("diffLabel", labelContributionItem); //$NON-NLS-1$
+				isUpdateNeeded = true;
+			}
+			if (isUpdateNeeded) {
+				fComposite.getDisplay().asyncExec(() -> {
+					// relayout in next tick
+					ToolBar control = tbm.getControl();
+					if (control != null && !control.isDisposed()) {
+						tbm.update(true);
+					}
+				});
+			}
+		}
 	}
 
 	private void resetDiffs() {
@@ -5443,7 +5500,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 	 */
 	private int getHunkStart() {
 		Object input = getInput();
-		if (input != null && input instanceof DiffNode){
+		if (input instanceof DiffNode){
 			ITypedElement right = ((DiffNode) input).getRight();
 			if (right != null) {
 				Object element = Adapters.adapt(right, IHunk.class);
@@ -5466,7 +5523,7 @@ public class WrapTextMergeViewer extends WrapContentMergeViewer implements IAdap
 		return fFindReplaceTarget;
 	}
 
-	/* package */ char getLeg(WrapMergeSourceViewer w) {
+	/* package */ char getLeg(MergeSourceViewer w) {
 		if (w == fLeft)
 			return LEFT_CONTRIBUTOR;
 		if (w == fRight)

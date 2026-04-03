@@ -297,11 +297,15 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 		if (fGlossFolder != null) {
 			dipProject().getGlossaryFolder().removeFolder(fGlossFolder);
 		} 
+		if (getDipDocumentChildren() == null) {
+			return;
+		}
+		
 		getDipDocumentChildren()
-		.stream()
-		.filter(DipFolder.class::isInstance)
-		.map(DipFolder.class::cast)
-		.forEach(DipFolder::removeGlossary);
+			.stream()
+			.filter(DipFolder.class::isInstance)
+			.map(DipFolder.class::cast)
+			.forEach(DipFolder::removeGlossary);
 	}
 	
 	//===========================		
@@ -340,6 +344,11 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 			dipProject().getReportFolder().removeContainer(fReportContainer.getOriginalReportContainer());
 			fReportContainer = null;
 		} 
+				
+		if (getDipDocumentChildren() == null) {
+			return;
+		}
+		
 		getDipDocumentChildren()
 		.stream()
 		.filter(DipFolder.class::isInstance)
@@ -386,7 +395,12 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 		if (fVarContainer != null) {
 			dipProject().getVariablesContainer().removeContainer(fVarContainer.getOriginalVarContainer());
 			fVarContainer = null;
-		} 
+		}
+		
+		if (getDipDocumentChildren() == null) {
+			return;
+		}
+		
 		getDipDocumentChildren()
 		.stream()
 		.filter(DipFolder.class::isInstance)

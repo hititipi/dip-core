@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Editors
 Bundle-SymbolicName: ru.dip.editors;singleton:=true
-Bundle-Version: 2.6.16
+Bundle-Version: 2.7.1
 Bundle-License: https://www.eclipse.org/legal/epl-2.0/
 Bundle-Localization: plugin
 Bundle-Activator: ru.dip.editors.ReqEditorsPlugin

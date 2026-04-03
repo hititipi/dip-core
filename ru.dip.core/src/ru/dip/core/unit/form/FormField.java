@@ -21,7 +21,7 @@ import ru.dip.core.unit.TextPresentation;
 
 public class FormField extends AbstractFormField {
 
-	private final Field fField;
+	private Field fField;
 
 	public FormField(IDipUnit unit, Field field) {
 		super(unit);
@@ -78,6 +78,10 @@ public class FormField extends AbstractFormField {
 
 	public Field getField() {
 		return fField;
+	}
+	
+	public void updateField(Field field) {
+		fField = field;
 	}
 
 	@Override
