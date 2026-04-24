@@ -16,21 +16,22 @@ package ru.dip.core.model;
 import org.eclipse.core.resources.IResource;
 
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 
 public class ChangeLog extends DipUnit {
 
 	public static ChangeLog instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.CHANGE_LOG);
-		if (element == null) {
-			ChangeLog changeLog = new ChangeLog(resource, parent);
-			DipRoot.getInstance().putElement(changeLog);
-			return changeLog;
-		} else {
-			return (ChangeLog) element;
+		ChangeLog changeLog = new ChangeLog(resource, parent);
+		ChangeLog storageInstance = DdeStorage.instance.get(changeLog.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
+		
+		DdeStorage.instance.put(changeLog.getDdeId(), changeLog);
+		changeLog.init();
+		return changeLog;
 	}
-	
+		
 	private ChangeLog(IResource resource, IParent parent) {
 		super(resource, parent);
 	}

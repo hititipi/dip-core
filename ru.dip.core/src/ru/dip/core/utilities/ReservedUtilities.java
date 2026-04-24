@@ -113,7 +113,7 @@ public class ReservedUtilities {
 	}
 	
 	public static void reserveFolder(Shell shell, IDipParent folder) throws DeleteDIPException, TmpCopyException{
-		List<IDipDocumentElement> children = folder.getDipDocChildrenList();
+		List<IDipDocumentElement> children = folder.getDdeElements();
 		for (int i =  children.size() - 1; i >= 0; i--){
 			IDipElement element = children.get(i);
 			if (element instanceof DipUnit){
@@ -149,7 +149,7 @@ public class ReservedUtilities {
 		IFolder folder = reservedFolder.resource();
 		deleteReservedMarker(folder, shell);
 		IParent parent = reservedFolder.parent();
-		parent.removeChild(reservedFolder);
+		parent.removeChild(reservedFolder.getDdeId());
 	}
 	
 	private static void deleteReservedMarker(IFolder folder, Shell shell){

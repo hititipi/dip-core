@@ -26,8 +26,8 @@ import org.eclipse.ui.handlers.HandlerUtil;
 
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.glossary.GlossaryFolder;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 import ru.dip.ui.glossary.GlossaryDialog;
 import ru.dip.ui.table.editor.DipTableEditor;
@@ -68,7 +68,7 @@ public class OpenGlossTableHandler extends AbstractHandler {
 			if (!DipNatureManager.hasNature(file.getProject())){
 				return;
 			}
-			project = DipRoot.getInstance().getDipProject(file.getProject());
+			project =DdeStorage.instance.getOrCreate(file.getProject());
 		}
 		if (project == null){
 			return;

@@ -20,6 +20,7 @@ import org.eclipse.core.resources.IFile;
 
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.IDdeID;
 
 public interface IReportContainer extends IParent {
 
@@ -33,7 +34,7 @@ public interface IReportContainer extends IParent {
 	 */
 	void addReportChild(IFile resource);
 	
-	List<Report> getReports();
+	List<IDdeID> getReports();
 
 	String getRelativePath();
 

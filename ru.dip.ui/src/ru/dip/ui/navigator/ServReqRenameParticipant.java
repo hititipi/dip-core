@@ -28,10 +28,10 @@ import org.eclipse.swt.widgets.Display;
 
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
-import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
+import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 
@@ -115,7 +115,7 @@ public class ServReqRenameParticipant extends RenameParticipant {
 		}
 		
 		private void createDipFolder() {
-			DipProject project = DipRoot.getInstance().getDipProject(fProject);
+			DipProject project =DdeStorage.instance.getOrCreate(fProject);
 			IContainer folder = fFolder.getParent();
 			IFolder newFolder = fFolder.getParent().getFolder(new Path(fNewName));
 			IDipElement element = DipUtilities.findDipElementInProject(folder, project);

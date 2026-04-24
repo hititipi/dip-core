@@ -15,32 +15,41 @@ package ru.dip.core.model.reports;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 
 public class MainReportContainer extends ReportContainer implements IMainReportContainer {
 
+	public static MainReportContainer instance(IDipParent parent) {
+		MainReportContainer container = new MainReportContainer(parent);
+		DdeStorage.instance.put(container.getDdeId(), container);		
+		return container;
+	}
+	
+	
 	/**
 	 * Главный ReportContainer в проекте без физической папки Reports 
 	 * (В старых версиях используется ProjectReportFolder)
 	 */
-	public MainReportContainer(IDipParent parent) {
+	private MainReportContainer(IDipParent parent) {
 		super(parent);
 	}
 
 	private List<IReportContainer> fReportContainers = new ArrayList<>();
 
 	@Override
-	public List<IDipElement> getChildren() {
+	public List<IDdeID> getChildren() {
 		if (getReports() == null) {
 			super.computeChildren();
 		}
 
-		List<IDipElement> result = new ArrayList<>();
+		List<IDdeID> result = new ArrayList<>();
 		result.addAll(getReports());
 		if (fReportContainers != null) {
-			result.addAll(fReportContainers);
+			result.addAll(fReportContainers.stream().map(IReportContainer::getDdeId).collect(Collectors.toList()));
 		}
 		return result;
 	}

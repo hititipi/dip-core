@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 import org.eclipse.core.resources.IFile;
 
 import ru.dip.core.model.DipProject;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 
 /**
  *  Объект глоссария для проекта
@@ -32,11 +34,18 @@ import ru.dip.core.model.DipProject;
  */
 public class ProjectGlossaryFolder extends GlossaryFolder {
 
-	private Set<GlossaryFolder> fFolders = new HashSet<>();
+	public static ProjectGlossaryFolder instance(IFile glossFile, DipProject project) {
+		ProjectGlossaryFolder glossaryFolder = new ProjectGlossaryFolder(glossFile, project);
+		DdeStorage.instance.put(glossaryFolder.getDdeId(), glossaryFolder);
+		return glossaryFolder;
+	}
+	
+	private Set<IDdeID> fFolders = new HashSet<>();
 
-	public ProjectGlossaryFolder(IFile glossFile, DipProject project) {
+
+	private ProjectGlossaryFolder(IFile glossFile, DipProject project) {
 		super(glossFile,project);
-		fFolders.add(this);
+		fFolders.add(getDdeId());
 		updateFindGlossRegex();
 	}
 	
@@ -46,11 +55,11 @@ public class ProjectGlossaryFolder extends GlossaryFolder {
 	}
 	
 	public void addFolder(GlossaryFolder glossFolder) {
-		fFolders.add(glossFolder);
+		fFolders.add(glossFolder.getDdeId());
 		updateFindGlossRegex();
 	}
 	
-	public void removeFolder(GlossaryFolder glossFolder) {
+	public void removeFolder(IDdeID glossFolder) {
 		fFolders.remove(glossFolder);
 		updateFindGlossRegex();
 	}
@@ -69,17 +78,23 @@ public class ProjectGlossaryFolder extends GlossaryFolder {
 	}
 	
 	private Optional<GlossaryFolder> findGlossaryFolder(GlossaryField field) {
-		return fFolders.stream()
+		return DdeStorage.instance.getList(fFolders)
+				.stream()
+				.map(GlossaryFolder.class::cast)
 				.filter(folder -> getFields().contains(field))
 				.findAny();		
 	}
 	
-	@Override
-	public List<GlossaryField> getChildren() {
+	
+	 
+	
+	public List<GlossaryField> getAllFields() {
 		if (fFolders == null) {
 			return getFields();
 		}
-		return fFolders.stream()
+		return DdeStorage.instance.getList(fFolders)
+				.stream()
+				.map(GlossaryFolder.class::cast)
 				.flatMap(f -> f.getFields().stream())
 				.collect(Collectors.toList());		
 	}

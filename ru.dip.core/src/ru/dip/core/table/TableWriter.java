@@ -53,7 +53,7 @@ public class TableWriter {
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		Document doc = builder.newDocument();
 		Element xmlRootElement = doc.createElement("table");	
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();		
+		List<IDipDocumentElement> children = parent.getDdeElements();
 		String tableDescription = parent.description();
 		if (parent.isRoot()) {
 			xmlRootElement.setAttribute(TableReader.ROOT_ATR, "true");
@@ -108,7 +108,7 @@ public class TableWriter {
 	}
 	
 	private static Element createUnitElement(Document doc, IDipDocumentElement dipDocumentElement) {
-		Element xmlDipElement = doc.createElement(TableReader.REQ_ELEMNT);				
+		Element xmlDipElement = doc.createElement(TableReader.REQ_ELEMNT);
 		xmlDipElement.setAttribute(TableReader.NAME_ATTRIBUTE, dipDocumentElement.resource().getName());
 		if (dipDocumentElement.isDisabled()) {
 			xmlDipElement.setAttribute(TableReader.DISABLE_ATTRIBUTE, "true");
@@ -141,7 +141,7 @@ public class TableWriter {
 	}
 	
 	private static Element createLinkElement(Document doc, IncludeFolder includeParent) {
-		Element xmlDipElement = doc.createElement(TableReader.INCLUDE_FOLDER);
+		Element xmlDipElement = doc.createElement(TableReader.INCLUDE_FOLDER);		
 		xmlDipElement.setAttribute(TableReader.LINK_ATTRIBUTE, includeParent.getLinkRelativePath());
 		xmlDipElement.setAttribute(TableReader.NAME_ATTRIBUTE, includeParent.dipName());
 		String linkDescription = includeParent.linkDescription();

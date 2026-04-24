@@ -356,7 +356,7 @@ public class KTableColorInteractor {
 		set.add(dipDocElement);
 		if (dipDocElement instanceof IDipParent) {
 			IDipParent dipParent = (IDipParent) dipDocElement;
-			for (IDipDocumentElement childReq : dipParent.getDipDocChildrenList()) {
+			for (IDipDocumentElement childReq : dipParent.getDdeElements()) {
 				setDoubleClickParentColors(set, childReq, selectedFolder);
 			}
 		}
@@ -366,7 +366,7 @@ public class KTableColorInteractor {
 		set.add(dipDocElement);
 		if (dipDocElement instanceof IDipParent) {
 			IDipParent dipParent = (IDipParent) dipDocElement;
-			for (IDipDocumentElement childReq : dipParent.getDipDocChildrenList()) {
+			for (IDipDocumentElement childReq : dipParent.getDdeElements()) {
 				setDoubleClickChildColors(set, childReq);
 			}
 		}

@@ -13,8 +13,6 @@
  *******************************************************************************/
 package ru.dip.core.model.interfaces;
 
-import ru.dip.core.model.interfaces.IDipUnit;
-
 public interface IDipUnitProvider {
 
 	IDipUnit getDipUnit();

@@ -33,10 +33,21 @@ public interface IDipUnit extends IDipDocumentElement, IMarkable {
 
 	String getNumer();
 
+	
+	/**
+	 * Возвращает все Extension (актуально для форм - и поля и UnitPresentation)
+	 */
+	List<UnitExtension> getAllUnitExtensions();
+	
+	/**
+	 * Возвращает Extension (которые отображаются в Document)
+	 */
 	List<UnitExtension> getUnionExtensions();
 	
 	DipProject dipProject();
 
 	void updateTextAnnotations(List<ITextComment> textComments);
+
+	
 	
 }

@@ -165,7 +165,14 @@ public class TablePage extends FormPage {
 	}
 	
 	private void setContent() {
-		fBrowser.execute("setcontent('" + fEditor.content() + "')");
+		Display.getDefault().asyncExec(new Runnable() {
+			
+			@Override
+			public void run() {
+				fBrowser.execute("setcontent('" + fEditor.content() + "')");
+			}
+		});
+		
 	}
 	
 	private void updateContent() {

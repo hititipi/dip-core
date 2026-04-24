@@ -13,8 +13,6 @@
  *******************************************************************************/
 package ru.dip.core.model.interfaces;
 
-import ru.dip.core.model.interfaces.IDipDocumentElement;
-
 public interface ISearchElementsHolder {
 	
 	IDipDocumentElement[] getDipDocElementsForSearch();

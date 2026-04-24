@@ -24,23 +24,22 @@ import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.runtime.CoreException;
 
 import ru.dip.core.model.glossary.GlossRef;
-import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipUnit;
-import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 
 public abstract class DipContainer extends DipElement implements IParent {
 
-	protected List<IDipElement> fChildren;
-
+	protected List<IDdeID> fChildren;
+	
 	public DipContainer(IContainer container, IParent parent) {
 		super(container, parent);
 	}
-	
+
 	@Override
-	public List<IDipElement> getChildren() {
+	public List<IDdeID> getChildren() {
 		if (fChildren == null){
 			computeChildren();
 		}		
@@ -54,25 +53,26 @@ public abstract class DipContainer extends DipElement implements IParent {
 		return getChildren().size() > 0;
 	}
 	
-	public IDipElement createReservedFolder(IFolder folder){
+	public DipReservedFolder createReservedFolder(IFolder folder){
 		DipReservedFolder reservedFolder = DipReservedFolder.instance(folder, this);
-		fChildren.add(reservedFolder);
+		fChildren.add(reservedFolder.getDdeId());
 		return reservedFolder;
 	}
 	
-	public IDipElement createFolder(IFolder folder){
+	public DipFolder createFolder(IFolder folder){
 		DipFolder dipFolder = DipFolder.instance(folder, this);
-		fChildren.add(dipFolder);
+		fChildren.add(dipFolder.getDdeId());
 		return dipFolder;
 	}
 	
-	public IDipElement createIncludeFolder(IFolder folder) {
+	public IncludeFolder createIncludeFolder(IFolder folder) {		
 		if (!chechLinkFolder(folder)) {
 			return null;
 		}	
 		IncludeFolder incFolder = IncludeFolder.instance(folder, this);
-		fChildren.add(incFolder);
-		dipProject().addIncludeFolder(incFolder);
+		
+		fChildren.add(incFolder.getDdeId());
+		dipProject().addIncludeFolder(incFolder.getDdeId());
 		return incFolder;
 	}
 	
@@ -91,80 +91,75 @@ public abstract class DipContainer extends DipElement implements IParent {
 		return true;
 	}
 
-	public IDipElement createReservedMarker(IFile file){
+	public DipReservedMarker createReservedMarker(IFile file){
 		DipReservedMarker marker = DipReservedMarker.instance(file, this);
-		fChildren.add(marker);
+		fChildren.add(marker.getDdeId());
 		return marker;
 	}
 	
-	public IDipElement createReservedUnit(IFile file){
+	public DipReservedUnit createReservedUnit(IFile file){
 		DipReservedUnit reservedUnit = DipReservedUnit.instance(file, this);
-		fChildren.add(reservedUnit);
+		fChildren.add(reservedUnit.getDdeId());
 		return reservedUnit;
 	}
 	
 	public IDipUnit createUnit(IFile file){
-		DipUnit unit = DipUnit.instance(file, this);
-		fChildren.add(unit);
+		IDipUnit unit = DipUnit.instance(file, this);
+		fChildren.add(unit.getDdeId());
 		return unit;
 	}
 	
-	public IDipElement createGlossRef(IFile file){
-		GlossRef unit = GlossRef.instance(file, this);
-		fChildren.add(unit);
+	public IDipUnit createGlossRef(IFile file){
+		IDipUnit unit = GlossRef.instance(file, this);
+		fChildren.add(unit.getDdeId());
 		return unit;
 	}
 	
-	public IDipElement createTocRef(IFile file){
+	public TocRef createTocRef(IFile file){
 		TocRef unit = TocRef.instance(file, this);
-		fChildren.add(unit);
+		fChildren.add(unit.getDdeId());
 		return unit;
 	}
 	
-	public IDipElement createChangeLog(IFile file){
+	public ChangeLog createChangeLog(IFile file){
 		ChangeLog unit = ChangeLog.instance(file, this);
-		fChildren.add(unit);
+		fChildren.add(unit.getDdeId());
 		return unit;
 	}
 	
-	public IDipElement createDipComment(IFile file){
+	public DipComment createDipComment(IFile file){
 		DipComment comment = DipComment.createExistsDipComment(file, this);
-		fChildren.add(comment);
+		fChildren.add(comment.getDdeId());
 		return comment;
 	}
 	
-	public IDipElement createFolderDipComment(IFile file){
+	public DipFolderComment createFolderDipComment(IFile file){
 		DipFolderComment comment = DipFolderComment.createExistsDipComment(file, this);
-		fChildren.add(comment);
+		fChildren.add(comment.getDdeId());
 		return comment;
 	}
 		
-	public IDipElement createDipDescription(IFile file){
+	public DipDescription createDipDescription(IFile file){
 		DipDescription description = DipDescription.createExistsDipDescription(file, this);
-		fChildren.add(description);
+		fChildren.add(description.getDdeId());
 		return description;
 	}
 	
 	@Override
-	public IDipElement getChild(String name) {
+	public IDdeID getChild(String name) {
 		if (fChildren == null){
 			computeChildren();
 		}
-		IDipElement noDipDocElement = null;  // есть проблема с Glossary, когда есть папка с таким же именем	
-		for (IDipElement child: fChildren){			
-			if (name.equals(child.name()) || name.equals(child.dipName())){
-				if (child instanceof IDipDocumentElement) {
-					return child;
-				} else {
-					noDipDocElement = child;
-				}
+		for (IDdeID child: fChildren){					
+			if (name.equals(child.getName())){
+				return child;
 			}
 		}
-		return noDipDocElement;
+		return null;
 	}
 	
 	@Override
-	public void removeChild(IDipElement child) {
+	public void removeChild(IDdeID child) {
 		fChildren.remove(child);
 	}
 	

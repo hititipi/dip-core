@@ -105,7 +105,7 @@ public class IDContentAssistProcessor implements IContentAssistProcessor {
 
 	private ICompletionProposal[] projectProposal(ITextViewer viewer, int offset) {
     	List<IDipDocumentElement> proposals = new ArrayList<>();
-    	proposals.addAll(fProject.getDipDocChildrenList());     	
+    	proposals.addAll(fProject.getDdeElements());     	
     	return proposals.stream()
     			.map(dipDocElement -> new DipElementProporsal(offset, dipDocElement, viewer))
     			.toArray(ICompletionProposal[]::new);
@@ -113,7 +113,7 @@ public class IDContentAssistProcessor implements IContentAssistProcessor {
 
 	private ICompletionProposal[] parentProposal(IDipParent parent, String text, 
 			ITextViewer viewer, int offset) {
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
+		List<IDipDocumentElement> children = parent.getDdeElements();
 		if (children.isEmpty()) {
 			return null;
 		}
@@ -163,7 +163,7 @@ public class IDContentAssistProcessor implements IContentAssistProcessor {
 	private ICompletionProposal[] notCompleteProposal(IDipParent previous, String incomplete,
 			ITextViewer viewer, int offset) {
 		
-		List<IDipDocumentElement> children = previous.getDipDocChildrenList();
+		List<IDipDocumentElement> children = previous.getDdeElements();
 		List<IDipDocumentElement> result = new ArrayList<>();
 		for (IDipDocumentElement dipDocElement: children) {
 			String name = dipDocElement.dipName();

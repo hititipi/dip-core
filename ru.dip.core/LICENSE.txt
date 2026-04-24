@@ -1,3 +1,7 @@
+Copyright (c) 2025 Denis Melnik.
+Copyright (c) 2025 Ruslan Sabirov.
+Copyright (c) 2025 Andrei Motorin.
+
 Eclipse Public License - v 2.0
 
     THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE

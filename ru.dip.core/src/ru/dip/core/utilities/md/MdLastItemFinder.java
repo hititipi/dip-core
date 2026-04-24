@@ -56,7 +56,7 @@ public class MdLastItemFinder {
 	}
 
 	private static List<IDipUnit> getMdUnitsFromFolder(IDipUnit unit) {
-		return unit.parent().getDipDocChildrenList().stream().filter(IDipUnit.class::isInstance)
+		return unit.parent().getDdeElements().stream().filter(IDipUnit.class::isInstance)
 				.filter(dde -> !dde.isDisabled()).map(IDipUnit.class::cast).filter(u -> u.getUnitType().isMarkdown())
 				.collect(Collectors.toList());
 	}

@@ -29,7 +29,6 @@ import java.util.stream.Stream;
 
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -49,8 +48,6 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.ide.undo.MoveResourcesOperation;
-import org.eclipse.ui.ide.undo.WorkspaceUndoUtil;
 
 import ru.dip.core.DipCorePlugin;
 import ru.dip.core.exception.CopyDIPException;
@@ -70,8 +67,6 @@ import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.DipFolder;
 import ru.dip.core.model.DipProject;
 import ru.dip.core.model.DipProjectSchemaModel;
-import ru.dip.core.model.DipRoot;
-import ru.dip.core.model.DipSchemaElement;
 import ru.dip.core.model.DipSchemaFolder;
 import ru.dip.core.model.DnfoTable;
 import ru.dip.core.model.IncludeFolder;
@@ -85,11 +80,13 @@ import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.ITextComment;
 import ru.dip.core.model.reports.ProjectReportFolder;
 import ru.dip.core.model.reports.Report;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.table.TableReader;
 import ru.dip.core.table.TableWriter;
 import ru.dip.core.unit.GlossaryPresentation;
 import ru.dip.core.unit.TocRefPresentation;
 import ru.dip.core.unit.UnitType;
+import ru.dip.core.utilities.dde.RenameUtils;
 import ru.dip.core.utilities.status.DipStatus;
 import ru.dip.core.utilities.status.ErrorStatus;
 import ru.dip.core.utilities.status.StatusUtils;
@@ -263,7 +260,7 @@ public class DipUtilities {
 		if (fileExtension == null || fileExtension.isEmpty()){
 			return false;
 		}
-		DipProject dipProject = DipRoot.getInstance().getDipProject(file.getProject());
+		DipProject dipProject = DdeStorage.instance.getOrCreate(file.getProject());
 		if (dipProject != null){
 			DipProjectSchemaModel schemaModel = dipProject.getSchemaModel();
 			if (schemaModel != null){
@@ -860,18 +857,16 @@ public class DipUtilities {
 			boolean reserve, Shell shell)
 			throws RenameDIPException, SaveTableDIPException {
 		Shell finalShell = WorkbenchUtitlities.checkShell(shell);	
-		String oldID = DipRoot.getInstance().mapID(element);
 		WorkspaceJob job = getRenameJob(element, newName, 
-				finalShell, reserve, oldID, false); 
+				finalShell, reserve, false); 
 		runRenameJobWithCheckDisable(element, newName, job);
 	}
 	
 	public static void renameElement(IDipElement element, String newName,
 			boolean reserve, Shell shell) throws  RenameDIPException, SaveTableDIPException{
 		Shell finalShell = WorkbenchUtitlities.checkShell(shell);	
-		String oldID = DipRoot.getInstance().mapID(element);
 		WorkspaceJob job = getRenameJob(element, newName,
-				finalShell, reserve, oldID, true);
+				finalShell, reserve, true);
 		
 		runRenameJobWithCheckDisable(element, newName, job);
 	}
@@ -885,7 +880,7 @@ public class DipUtilities {
 	}
 	
 	private static WorkspaceJob getRenameJob(IDipElement element, String newName, Shell shell, boolean reserve,
-			String oldID, boolean needSaveTable) throws SaveTableDIPException, RenameDIPException {
+			boolean needSaveTable) throws SaveTableDIPException, RenameDIPException {
 
 		return new WorkspaceJob("Rename") {
 
@@ -901,24 +896,26 @@ public class DipUtilities {
 						}
 					} else if (element instanceof IDipUnit) {
 						IDipUnit unit = (IDipUnit) element;
-						renameUnit(unit, newName, reserve, shell);
+						RenameUtils.renameUnit(unit, newName, reserve, shell);
 						if (needSaveTable) {
 							saveTable(unit.parent());
 						}
 					} else if (element instanceof DipProject) {
 						DipProject project = (DipProject) element;
-						renameProject(project, newName, shell);
+						RenameUtils.renameProject(project, newName, shell);						
 					} else if (element instanceof IDipParent) {
 						IDipParent dipParent = (IDipParent) element;
-						renameFolder(dipParent, newName, reserve, shell);
+						//renameFolder(dipParent, newName, reserve, shell);
+						RenameUtils.renameFolder(dipParent, newName, reserve, shell);
+						
 						if (needSaveTable) {
 							saveTable(dipParent.parent());
 						}
 					}else if (element instanceof DipElement && element.resource() instanceof IFile) {
 						DipElement report = (DipElement) element;
-						renameReport(report, newName, shell);
+						RenameUtils.renameReport(report, newName, shell);
 					}
-					DipRoot.getInstance().updateID(element, oldID);
+					//DipRoot.getInstance().updateID(element, oldID);
 					return Status.OK_STATUS;
 				} catch (RenameDIPException | SaveTableDIPException e) {
 					e.printStackTrace();
@@ -943,233 +940,6 @@ public class DipUtilities {
 			e.printStackTrace();			
 			throw new RenameDIPException(element, e.getMessage());
 		}
-	}
-	
-	private static void renameUnit(IDipUnit unit, String newName, boolean reserve, Shell shell) throws RenameDIPException{
-		String lastID =  relativeProjectID(unit);
-		String includeID = null;
-		if (unit.isIncluded()) {
-			includeID = relativeIncludeElement(unit);
-		}
-		
-		if (reserve){
-			ReservedUtilities.createReserveUnit(shell, unit);
-		}	
-		IFile file = (IFile) unit.resource();
-		// description
-		DipDescription description = unit.dipDescription();
-		String descriptionContent = null;
-		if (description != null) {
-			descriptionContent = description.getDescriptionContent();
-		}
-		// comment
-		IDipComment comment = unit.comment();
-		String commentContent = null;
-		if (comment != null) {
-			commentContent = comment.getCommentContent();
-		}
-		List<ITextComment> textComments = null;
-		if (comment != null) {
-			textComments = comment.getTextComments();
-		}
-	
-		IPath newPath = file.getFullPath().removeLastSegments(1).append(newName);
-		MoveResourcesOperation mp = new MoveResourcesOperation(file, newPath, "Move resource");
-		try {
-			IStatus status = mp.execute(null, WorkspaceUndoUtil.getUIInfoAdapter(shell));
-			if (!status.isOK()){
-				throw new RenameDIPException(unit, status.getMessage());
-			}
-			IFile newFile = file.getParent().getFile(new Path(newName));
-			unit.setResource(newFile);
-			updateReqDescription(unit, description, descriptionContent);
-			updateReqComment(unit, comment, commentContent, textComments);
-			
-			String newRelativeID = relativeProjectID(unit);
-			LinkInteractor.instance().updateLinks(lastID, newRelativeID, unit.dipProject(), false);									
-			if (unit.isIncluded()) {
-				String newIncludeID = relativeIncludeElement(unit);								
-				IncludeFolder folder = findIncludeFolder(unit);
-				LinkInteractor.instance().updateLinks(includeID, newIncludeID, folder, false);									
-			}
-		} catch (ExecutionException e) {
-			e.printStackTrace();
-			throw new RenameDIPException(unit, e.getMessage());
-		}
-		ResourcesUtilities.updateDipElement(unit);
-	}
-	
-	/**
-	 *  Обновляет описание после переименования
-	 */
-	private static void updateReqDescription(IDipUnit unit, DipDescription description, String content) {
-		if (description != null){
-			description.delete();
-		}
-		unit.removeDescription();
-		if (content != null && !content.isEmpty()) {
-			unit.updateDescription(content);
-		}
-	}
-	
-	/**
-	 * Обновляет комментарий после переименования
-	 */
-	private static void updateReqComment(IDipUnit unit, IDipComment comment, String content, List<ITextComment> textComments) {
-		// удалить старый коммент
-		if (comment != null){
-			comment.delete();
-		}
-		unit.deleteDipComment();
-		// создаем новый
-		if (content != null && !content.isEmpty()) {
-			unit.updateDipComment(content);
-		}
-		if (textComments != null && !textComments.isEmpty()) {
-			unit.updateTextAnnotations(textComments);
-		}
-	}
-	
-	public static void renameSchema(DipSchemaElement schema, String newName, Shell shell) throws RenameDIPException{
-		if (shell == null){
-			shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
-		}	
-		IFile file = schema.resource();
-		IPath newPath = file.getFullPath().removeLastSegments(1).append(newName);
-		MoveResourcesOperation mp = new MoveResourcesOperation(file, newPath, "Move resource");
-		try {
-			IStatus status = mp.execute(null, WorkspaceUndoUtil.getUIInfoAdapter(shell));
-			if (!status.isOK()){
-				throw new RenameDIPException(schema, status.getMessage());
-			}
-			IFile newFile = file.getParent().getFile(new Path(newName));
-			schema.setResource(newFile);
-		} catch (ExecutionException e) {
-			e.printStackTrace();
-			throw new RenameDIPException(schema, e.getMessage());
-		}
-		ResourcesUtilities.updateDipElement(schema);
-	}
-	
-	private static void renameFolder(IDipParent dipParent, String newName, boolean reserve, Shell shell) throws RenameDIPException{
-		String lastID = relativeProjectID(dipParent);
-		String includeID = null;
-		if (dipParent.isIncluded()) {
-			includeID = relativeIncludeElement(dipParent);
-		}
-		
-		DipCorePlugin.logInfo("Rename folder " + dipParent.id());
-		IFolder folder = (IFolder) dipParent.resource();
-		IPath newPath = folder.getFullPath().removeLastSegments(1).append(newName);
-		try {
-			if (reserve) {
-				folder.copy(newPath, true, null);
-				IFolder newFolder = folder.getParent().getFolder(new Path(newName));
-				afterRename(dipParent, newFolder);
-				IDipParent oldDipFolder = dipParent.parent().createNewFolder(folder);
-				try {
-					deleteElement(oldDipFolder, true, shell, NO_TMP);
-				} catch (TmpCopyException e) {
-					// NOP
-				}
-			} else {
-				folder.move(newPath, true, null);
-				IFolder newFolder = folder.getParent().getFolder(new Path(newName));
-				afterRename(dipParent, newFolder);
-			}
-			
-			// обновить ссылки
-			String newRelativeID = relativeProjectID(dipParent);
-			LinkInteractor.instance().updateLinks(lastID, newRelativeID, dipParent.dipProject(), true);
-			if (dipParent.isIncluded()) {
-				String newIncludeID = relativeIncludeElement(dipParent);								
-				IncludeFolder includeFolder = findIncludeFolder(dipParent);
-				LinkInteractor.instance().updateLinks(includeID, newIncludeID, includeFolder, true);									
-			}
-		} catch (CoreException | DeleteDIPException e) {
-			e.printStackTrace();
-			throw new RenameDIPException(dipParent, e.getMessage());
-		}
-		ResourcesUtilities.updateDipElement(dipParent.parent());
-		WorkbenchUtitlities.updateProjectExplorer();
-	}
-
-	private static void renameProject(DipProject dipProject, String newName, Shell shell) throws RenameDIPException {
-		DipCorePlugin.logInfo("Rename Project " + dipProject.name());
-		IProject project = dipProject.getProject();
-		IPath path = project.getFullPath().removeLastSegments(1).append(newName);
-		try {
-			project.move(path, true, null);
-			ResourcesUtilities.updateProject(project);		
-			IProject newProject = ResourcesPlugin.getWorkspace().getRoot().getProject(newName);
-			afterRenameProject(dipProject, newProject);
-		} catch (CoreException e) {
-			e.printStackTrace();
-			throw new RenameDIPException(dipProject, e.getMessage());
-		}
-	}
-	
-	private static void afterRename(IParent renamedFolder, IContainer newContainer){
-		if (DipUtilities.isServedFolder(newContainer.getName())) {
-			renamedFolder.parent().removeChild(renamedFolder);
-			return;
-		}
-		
-		// при переименовании проекта
-		if (renamedFolder.parent() == null) {
-			renamedFolder.setResource(newContainer);
-		} else {		
-			renamedFolder.parent().getChild(renamedFolder.name()).setResource(newContainer);
-			renamedFolder.setResource(newContainer);
-		}
-		
-		updateChildrenAfterRename(renamedFolder, newContainer);	
-	}
-	
-	private static void afterRenameProject(IParent renamedFolder, IContainer newContainer){
-		renamedFolder.setResource(newContainer);
-		updateChildrenAfterRename(renamedFolder, newContainer);
-		DipRoot.getInstance().getDipProject(newContainer.getProject()).refresh();
-	}
-	
-	private static void updateChildrenAfterRename(IParent renamedFolder, IContainer newContainer) {
-		for (IDipElement element: renamedFolder.getChildren()){			
-			IResource res = element.resource();
-			if (res == null){
-				continue;
-			}
-			String name = element.name();
-
-			if (res instanceof IFile){
-				IFile file = newContainer.getFile(new Path(name));
-				element.setResource(file);
-			}
-			if (res instanceof IFolder){
-				IFolder folder = newContainer.getFolder(new Path(name));
-				element.setResource(folder);
-				if (element instanceof IParent){
-					afterRename((IParent) element, folder);
-				}
-			}			
-		}	
-	}
-	
-	private static void renameReport(DipElement report, String newName, Shell shell) throws RenameDIPException{
-		IFile file = (IFile) report.resource();
-		IPath newPath = file.getFullPath().removeLastSegments(1).append(newName);
-		MoveResourcesOperation mp = new MoveResourcesOperation(file, newPath, "Move resource");
-		try {
-			IStatus status = mp.execute(null, WorkspaceUndoUtil.getUIInfoAdapter(shell));
-			if (!status.isOK()){
-				throw new RenameDIPException(report, status.getMessage());
-			}
-			IFile newFile = file.getParent().getFile(new Path(newName));
-			report.setResource(newFile);
-		} catch (ExecutionException e) {
-			e.printStackTrace();
-			throw new RenameDIPException(report, e.getMessage());
-		}
-		ResourcesUtilities.updateDipElement(report);
 	}
 	
 	//====================================
@@ -1267,7 +1037,7 @@ public class DipUtilities {
 	
 	public static TmpElement deleteIncludeFolder(IncludeFolder includeFolder, Shell shell) throws DeleteDIPException, TmpCopyException {
 		if (includeFolder.isErrorLink()) {
-			includeFolder.parent().removeChild(includeFolder);
+			includeFolder.parent().removeChild(includeFolder.getDdeId());
 			return null;
 		}
 		IncludeTmpElement tmp = new IncludeTmpElement(includeFolder);
@@ -1318,7 +1088,7 @@ public class DipUtilities {
 			if (tmp) {
 				tmpPath = ResourcesUtilities.createTmpCopy(description.resource());
 			}
-			DipRoot.getInstance().removeElement(description);
+			//DipRoot.getInstance().removeElement(description);
 			description.delete();
 			return tmpPath;
 		}
@@ -1339,7 +1109,7 @@ public class DipUtilities {
 		IFolder folder = (IFolder) dipFolder.resource();
 		IDipParent parent = (IDipParent) dipFolder.parent();
 		if (parent != null){
-			parent.removeChild(dipFolder);
+			parent.removeChild(dipFolder.getDdeId());
 			parent.createReservedFolder(folder);
 			if (tmp) {
 				java.nio.file.Path tmpPath = ResourcesUtilities.createTmpCopy(dipFolder.resource());
@@ -1365,7 +1135,7 @@ public class DipUtilities {
 		}
 		IParent parent = table.parent();
 		if (parent != null) {
-			parent.removeChild(table);
+			parent.removeChild(table.getDdeId());
 		}
 	}
 	
@@ -1380,21 +1150,22 @@ public class DipUtilities {
 					tmpElement.setComment(((IDipParent) element).getCommentContent());
 				}
 			}
-			DipRoot.getInstance().removeElement(element);
 			IStatus status = ResourcesUtilities.deleteResource(element.resource(), shell);
-			WorkbenchUtitlities.closeEditorsIfInputNotExists();
 			
 			if (!status.isOK()){
 				throw new DeleteDIPException(element, status.getMessage());
 			}
+			DdeStorage.instance.deleteContainer(element.getDdeId());
+			WorkbenchUtitlities.closeEditorsIfInputNotExists();
 		} catch (CoreException e) {
 			e.printStackTrace();
 			throw new DeleteDIPException(element, e.getMessage());
 		}
 				
+		
 		IParent parent = element.parent();
 		if (parent != null){
-			parent.removeChild(element);		
+			parent.removeChild(element.getDdeId());		
 		}
 		return tmpElement;
 	}	
@@ -1402,9 +1173,8 @@ public class DipUtilities {
 	public static void deleteProjectFromWorkspace(DipProject project) throws DeleteDIPException{
 		try {
 			DipCorePlugin.logInfo("Delete project" + project.resource().getLocation());
-			DipRoot.getInstance().removeProject(project);
-			DipRoot.getInstance().removeElement(project);
 			project.getProject().delete(false, true, null);
+			DdeStorage.instance.deleteProject(project.dipProject());
 		} catch (CoreException e) {
 			e.printStackTrace();
 			throw new DeleteDIPException(project, e.getMessage());
@@ -1415,7 +1185,7 @@ public class DipUtilities {
 	// extract elements from folder
 	
 	public static IStatus canExtract(IDipParent folder) {
-		List<IDipDocumentElement> sources = folder.getDipDocChildrenList();
+		List<IDipDocumentElement> sources = folder.getDdeElements();
 		IDipParent parent = folder.parent();
 		for (IDipDocumentElement source: sources) {
 			IStatus status = canPaste(parent, source);
@@ -1431,7 +1201,7 @@ public class DipUtilities {
 	
 	public static ExtractResult moveUp(IDipParent folder, boolean reserve, Shell shell) throws DeleteDIPException, CopyDIPException {
 		IDipParent target  = folder.parent();
-		List<IDipDocumentElement> sources = new ArrayList<>(folder.getDipDocChildrenList());
+		List<IDipDocumentElement> sources = new ArrayList<>(folder.getDdeElements());
 		int index =  folder.getIndex();
 		List<MoveResult> moveResults = new ArrayList<>();		
 		for (IDipDocumentElement source: sources) {						
@@ -1445,7 +1215,7 @@ public class DipUtilities {
 	
 	public static void moveUpWithoutTmp(IDipParent folder, boolean reserve, Shell shell) throws DeleteDIPException, CopyDIPException {
 		IDipParent target  = folder.parent();
-		List<IDipDocumentElement> sources = new ArrayList<>(folder.getDipDocChildrenList());
+		List<IDipDocumentElement> sources = new ArrayList<>(folder.getDdeElements());
 		int index =  folder.getIndex();
 		List<MoveResult> moveResults = new ArrayList<>();		
 		for (IDipDocumentElement source: sources) {						
@@ -1465,7 +1235,7 @@ public class DipUtilities {
 		int oldIndex = DipTableUtilities.getIndex(moved);
 		IDipElement newElement = DipUtilities.copyElement(target, moved, index, shell);
 		DipUtilities.deleteElement(moved, reserve, shell, NO_TMP);
-		LinkInteractor.instance().updateLinks(moved, target.getChild(moved.name()));
+		LinkInteractor.instance().updateLinks(moved,  DdeStorage.instance.get(target.getChild(moved.name())));
 		return new MoveResult(newElement.name(), oldParentID, target.id(), oldIndex);
 	}
 	
@@ -1477,11 +1247,11 @@ public class DipUtilities {
 		if (names.length > 0){
 			String projectName = names[0];
 			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
-			DipProject dipProject = DipRoot.getInstance().findDipProject(project);
+			DipProject dipProject = DdeStorage.instance.getOrCreate(project);
 			IDipElement resultElement = dipProject;
 			for (int i = 1; i < names.length; i++){
 				if (resultElement instanceof IParent){				
-					resultElement = ((IParent) resultElement).getChild(names[i]);
+					resultElement =  DdeStorage.instance.get(((IParent) resultElement).getChild(names[i]));
 					if (resultElement == null){
 						return null;
 					}
@@ -1540,7 +1310,7 @@ public class DipUtilities {
 		}
 		for (String segment: segments) {
 			if (resultElement instanceof IDipParent) {
-				resultElement = ((IDipParent)resultElement).getChild(segment);
+				resultElement =  DdeStorage.instance.get(((IDipParent)resultElement).getChild(segment));
 			} else {
 				resultElement = null;
 				break;
@@ -1548,7 +1318,7 @@ public class DipUtilities {
 		}
 		
 		DipProject project = parent.dipProject();
-		List<IncludeFolder> folders = project.getIncludeFolders();
+		List<IncludeFolder> folders = DdeStorage.instance.<IncludeFolder>getObjList(project.getIncludeFolders());
 
 		if (resultElement != null || segments.length == 0 || folders.isEmpty()) {
 			return resultElement;
@@ -1575,7 +1345,7 @@ public class DipUtilities {
 		IDipElement resultElement = project;
 		for (String segment: segments) {
 			if (resultElement instanceof IDipParent) {
-				resultElement = ((IDipParent)resultElement).getChild(segment);
+				resultElement = DdeStorage.instance.get(((IDipParent)resultElement).getChild(segment));
 			} else {
 				resultElement = null;
 				break;
@@ -1586,7 +1356,7 @@ public class DipUtilities {
 	
 	public static IDipElement findElement(IResource resource){
 		IProject project = resource.getProject();
-		DipProject dipProject = DipRoot.getInstance().findDipProject(project);
+		DipProject dipProject = DdeStorage.instance.getOrCreate(project);
 		if (dipProject != null){
 			return findDipElementInProject(resource, dipProject);
 		}
@@ -1603,9 +1373,9 @@ public class DipUtilities {
 				return null;
 			}			
 			if (result instanceof IParent){
-				IDipElement element = ((IParent) result).getChild(segment);
+				IDipElement element = DdeStorage.instance.get(((IParent) result).getChild(segment));
 				if (element == null && segment.endsWith(".report") && result instanceof DipFolder) {
-					result = ((DipFolder) result).getOrCreateReportContainer().getChild(segment);
+					result =DdeStorage.instance.get( ((DipFolder) result).getOrCreateReportContainer().getChild(segment));
 				} else {
 					result = element;
 				}
@@ -1633,7 +1403,7 @@ public class DipUtilities {
 				return Optional.empty();
 			}			
 			if (result instanceof IParent){
-				result = ((IParent) result).getChild(segment);
+				result =  DdeStorage.instance.get(((IParent) result).getChild(segment));
 			}			
 		}
 		if (result == null){
@@ -1644,7 +1414,8 @@ public class DipUtilities {
 	
 	public static DipProject findDipProject(IResource resource) {
 		IProject project = resource.getProject();
-		return DipRoot.getInstance().findDipProject(project);
+		//return DipRoot.getInstance().findDipProject(project);
+		return DdeStorage.instance.getOrCreate(project);
 	}
 	
 	public static boolean containsElement(IDipParent parent, IDipDocumentElement element){
@@ -1682,7 +1453,9 @@ public class DipUtilities {
 	 */
 	public static List<DipProject> findProjectsInFolder(java.nio.file.Path folderPath){		
 		List<DipProject> result = new ArrayList<>();
-		for (DipProject project: DipRoot.getInstance().getProjects()) {
+		//for (DipProject project: DipRoot.getInstance().getProjects()) {
+		for (DipProject project: DdeStorage.instance.getProjects()) {
+
 			if (project.resource() == null || project.resource().getLocationURI() == null) {
 				continue;
 			}
@@ -1781,7 +1554,9 @@ public class DipUtilities {
 	public static DipProject importDipProject(String name, String projectPath, boolean copy, Shell shell){
 		IProject project = importProject(name, projectPath, copy, shell); 
 		if (project != null){
-			DipProject dipProject = DipRoot.getInstance().getDipProject(project);
+			//DipProject dipProject = DipRoot.getInstance().getDipProject(project);
+			DipProject dipProject = DipProject.instance(project); // надо проверить, был getOrCreate
+			
 			DipProjectResourceCreator.checkSchemaFolder(shell, dipProject);
 			DipNatureManager.checkNature(dipProject);
 			ResourcesUtilities.updateProject(project);
@@ -2015,11 +1790,11 @@ public class DipUtilities {
 	 * Скитает количество DipUnit (за исключением disable
 	 */
 	public static long countUnits(IDipParent parent) {
-		long result = parent.getDipDocChildrenList().stream()
+		long result = parent.getDdeElements().stream()
 			.filter(IDipUnit.class::isInstance)
 			.filter(u -> !u.isDisabled())
 			.count();
-		result += parent.getDipDocChildrenList().stream()
+		result += parent.getDdeElements().stream()
 			.filter(IDipParent.class::isInstance)
 			.filter(p -> !p.isDisabled())
 			.map(IDipParent.class::cast)

@@ -270,7 +270,7 @@ public class FullExportPreprocessor extends ExportPreprocessor  implements IExpo
 
 	private void prepareToc() {
 		// номер   // текст // link_id
-		fDipProject.getDipDocChildrenList();
+		fDipProject.getDdeElements();
 		if (fTocElement != null) {
 			String fileName = fTocElement.getId().replaceAll("/", "_") + ".json";
 			String fullName = fPartsPath.resolve(fileName).toString();

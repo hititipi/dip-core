@@ -30,11 +30,11 @@ public interface IVarContainer extends IParent {
 
 	void deleteVariables(IDipElement[] objects) throws IOException;
 
-	IDipElement getChild(String name);
-
 	void addField(String name, String value) throws IOException;
 
 	void deleteField(Variable field) throws IOException;
 
 	void saveVarContainer() throws IOException;
+
+	Variable getVariable(String name);
 }

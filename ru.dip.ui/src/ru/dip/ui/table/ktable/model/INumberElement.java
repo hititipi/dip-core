@@ -2,9 +2,6 @@ package ru.dip.ui.table.ktable.model;
 
 import java.util.List;
 
-import ru.dip.ui.table.ktable.model.HideElements;
-import ru.dip.ui.table.ktable.model.IDipTableElement;
-
 public interface INumberElement {
 	
 	default List<IDipTableElement> linkedWithibleElements() {

@@ -19,6 +19,7 @@ import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.DipProject;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.IDdeID;
 
 public class Variable implements IDipElement {
 	
@@ -73,6 +74,11 @@ public class Variable implements IDipElement {
 	public VarContainer parent() {
 		return fVarContainer;
 	}
+	
+	@Override
+	public IDdeID parentDdeId() {
+		return fVarContainer.getDdeId();
+	}
 
 	@Override
 	public void setParent(IParent parent) {}
@@ -123,5 +129,10 @@ public class Variable implements IDipElement {
 
 	@Override
 	public void dispose() {}
+
+	@Override
+	public IDdeID getDdeId() {
+		throw new UnsupportedOperationException();
+	}
 
 }

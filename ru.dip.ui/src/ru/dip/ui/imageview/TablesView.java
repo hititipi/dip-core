@@ -20,6 +20,7 @@ import ru.dip.core.model.DipProject.ProjectTablesListener;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.ui.Messages;
 
@@ -35,7 +36,7 @@ public class TablesView extends ImagesView implements ProjectTablesListener {
 				if (element != null) {
 					IParent parent = element.parent();
 					if (parent instanceof IDipParent) {
-						fUnits = fProject.tables().stream()
+						fUnits =DdeStorage.instance.getUnitList(fProject.tables()).stream()
 								.filter(im -> im.parent().equals(parent))
 								.collect(Collectors.toList());
 						return;
@@ -43,7 +44,7 @@ public class TablesView extends ImagesView implements ProjectTablesListener {
 				}
 			}
 		}
-		fUnits = new ArrayList<>(fProject.tables());
+		fUnits = new ArrayList<>(DdeStorage.instance.getUnitList(fProject.tables()));
 	}
 
 	@Override

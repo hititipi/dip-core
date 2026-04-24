@@ -29,8 +29,9 @@ import org.eclipse.core.runtime.CoreException;
 
 import ru.dip.core.DipCorePlugin;
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.schema.Schema;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.TagStringUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 
@@ -43,14 +44,13 @@ public class DipSchemaFolder extends DipContainer {
 	public static final String DEFAULT_SCHEMA_NAME = "Requirement";
 
 	public static DipSchemaFolder instance(IFolder container, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(container, parent, DipElementType.SCHEMA_FOLDER);
-		if (element == null) {
-			DipSchemaFolder schemaFolder = new DipSchemaFolder(container, parent);
-			DipRoot.getInstance().putElement(schemaFolder);
-			return schemaFolder;
-		} else {
-			return (DipSchemaFolder) element;
-		}
+		DipSchemaFolder schemaFolder = new DipSchemaFolder(container, parent);
+		DipSchemaFolder storageInstance = DdeStorage.instance.get(schemaFolder.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
+		}		
+		DdeStorage.instance.put(schemaFolder.getDdeId(), schemaFolder);
+		return schemaFolder;
 	}
 	
 	private DipSchemaFolder(IFolder folder, IParent parent) {
@@ -63,7 +63,7 @@ public class DipSchemaFolder extends DipContainer {
 			for (IResource resource : resource().members()) {
 				if (resource instanceof IFile) {
 					DipSchemaElement schema = DipSchemaElement.instance(resource, this);
-					fChildren.add(schema);
+					fChildren.add(schema.getDdeId());
 				}
 			}
 		} catch (CoreException e) {
@@ -100,8 +100,8 @@ public class DipSchemaFolder extends DipContainer {
 
 	public DipSchemaElement createSchema(IFile file) {
 		DipSchemaElement formSchema = DipSchemaElement.instance(file, this);
-		fChildren.add(formSchema);
-		fChildren.sort(Comparator.comparing(IDipElement::name));		
+		fChildren.add(formSchema.getDdeId());
+		fChildren.sort(Comparator.comparing(IDdeID::getName));		
 		dipProject().getSchemaModel().addSchema(formSchema);
 		return formSchema;
 	}
@@ -111,8 +111,8 @@ public class DipSchemaFolder extends DipContainer {
 	 */
 	public DipSchemaElement findFormSchema(Schema schema) {
 		String name = schema.getFileName();
-		for (IDipElement element : fChildren) {
-			if (element instanceof DipSchemaElement && element.name().equals(name)) {
+		for (IDdeID element : fChildren) {
+			if (element.getType() == DipElementType.SCHEMA && element.getName().equals(name)) {
 				return (DipSchemaElement) element;
 			}
 		}

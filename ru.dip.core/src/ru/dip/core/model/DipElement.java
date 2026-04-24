@@ -17,12 +17,15 @@ import java.io.File;
 
 import org.eclipse.core.resources.IResource;
 
-import ru.dip.core.model.interfaces.IDisable;
-import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.ICommentSupport;
 import ru.dip.core.model.interfaces.IDescriptionSupport;
 import ru.dip.core.model.interfaces.IDipComment;
 import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.model.interfaces.IDisable;
+import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
@@ -30,14 +33,25 @@ import ru.dip.core.utilities.WorkbenchUtitlities;
 public abstract class DipElement implements IDipElement, IDescriptionSupport, ICommentSupport, IDisable {
 
 	private IResource fResource;
-	private IParent fParent;
+	private IDdeID fParent;
 	private String fDescription;
-	private IDipComment fDipComment;
-	private DipDescription fDipDescription;
+	private IDdeID fDipComment;
+	private IDdeID fDipDescription;
 	private boolean fReadOnly = false;
 	private boolean fIncluded = false;
 	private boolean fDisabled = false;
+	private IDdeID fDdeId;
 	
+	@Override
+	public void setResource(IResource resource) {
+		fResource = resource;
+		updateDid();		
+	}
+
+	protected void updateDid() {		
+		fDdeId = DdeID.updateID(fDdeId, this);	
+	}
+		
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -74,11 +88,19 @@ public abstract class DipElement implements IDipElement, IDescriptionSupport, IC
 
 	public DipElement(IResource resource, IParent parent) {
 		fResource = resource;
-		fParent = parent;
-		if (fParent != null) {
-			setIncluded(fParent.isIncluded());
-			setReadOnly(fParent.isReadOnly());
+		if (parent != null) {
+			fParent = parent.getDdeId();
 		}
+		if (parent != null) {
+			setIncluded(parent.isIncluded());
+			setReadOnly(parent.isReadOnly());
+		}
+		fDdeId = DdeID.of(this);		
+	}
+	
+	@Override
+	public IDdeID getDdeId() {
+		return fDdeId;
 	}
 	
 	@Override
@@ -106,11 +128,6 @@ public abstract class DipElement implements IDipElement, IDescriptionSupport, IC
 	}
 	
 	@Override
-	public void setResource(IResource resource) {
-		fResource = resource;		
-	}
-	
-	@Override
 	public void updateWithProject() {
 		ResourcesUtilities.updateDipElement(this);
 		WorkbenchUtitlities.updateProjectExplorer();
@@ -134,12 +151,17 @@ public abstract class DipElement implements IDipElement, IDescriptionSupport, IC
 	
 	@Override
 	public IParent parent() {
+		return DdeStorage.instance.get(fParent);
+	}
+
+	@Override
+	public IDdeID parentDdeId() {
 		return fParent;
 	}
 	
 	@Override
 	public void setParent(IParent parent) {
-		fParent = parent;		
+		fParent = parent.getDdeId();		
 	}
 	
 	@Override
@@ -147,14 +169,15 @@ public abstract class DipElement implements IDipElement, IDescriptionSupport, IC
 		if (resource() == null) {
 			if (parent() == null){
 				return null;
-			}									
-			return parent().dipProject();
+			}		
+			return  parent().dipProject();
 		}		
-		return DipRoot.getInstance().getDipProject(resource().getProject());
+		return DdeStorage.instance.getOrCreate(resource().getProject());
 	}
 		
 	@Override
 	public boolean hasParent(IParent parent) {
+		// надо продумать, не уверен что он работает правильно, надо смотреть через DdeID
 		IParent currentParent = parent();
 		while(currentParent != null){
 			if (currentParent.equals(parent)){
@@ -208,7 +231,7 @@ public abstract class DipElement implements IDipElement, IDescriptionSupport, IC
 		if (isDisabled()) {
 			return true;
 		}
-		IParent parent = parent();
+		IParent parent =  parent();
 		if (parent != null && parent instanceof IDisable) {
 			return ((IDisable) parent).isDisabledInDocument();
 		}
@@ -238,12 +261,16 @@ public abstract class DipElement implements IDipElement, IDescriptionSupport, IC
 	
 	@Override
 	public DipDescription dipDescription() {
-		return fDipDescription;
+		return DdeStorage.instance.get(fDipDescription);
 	}
 	
 	@Override
 	public void setDipDescription(DipDescription description) {
-		fDipDescription = description;
+		if (description == null) {
+			fDipDescription = null;
+		} else {
+			fDipDescription = description.getDdeId();
+		}
 	}
 	
 	@Override
@@ -261,7 +288,7 @@ public abstract class DipElement implements IDipElement, IDescriptionSupport, IC
 	
 	@Override
 	public IDipComment comment() {
-		return fDipComment;
+		return DdeStorage.instance.get(fDipComment);
 	}
 	
 	@Override
@@ -276,7 +303,13 @@ public abstract class DipElement implements IDipElement, IDescriptionSupport, IC
 	
 	@Override
 	public void setDipComment(IDipComment comment) {
-		fDipComment = comment;
+		if (comment instanceof IDipElement) {
+			fDipComment =((IDipElement) comment).getDdeId();
+		}
+	}
+	
+	public void setDipCommentByID(IDdeID commentID) {
+		fDipComment = commentID;
 	}
 	
 	@Override

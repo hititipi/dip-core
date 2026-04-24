@@ -25,9 +25,10 @@ import org.eclipse.ui.PlatformUI;
 
 import ru.dip.core.model.interfaces.IDescriptionSupport;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.FileUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 
@@ -35,18 +36,18 @@ public class DipDescription extends DipElement implements IDescriptionSupport  {
 
 	public static final String EXTENSION = "d";
 	
-	private IDipDocumentElement fDipElement;
+	private IDdeID fDipElement;
 	private String fDesciptionContent;
 	
-	public static DipDescription instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.DESCRIPTION);
-		if (element == null) {
-			DipDescription dipDescription = new DipDescription(resource, parent);
-			DipRoot.getInstance().putElement(dipDescription);
-			return dipDescription;
-		} else {
-			return (DipDescription) element;
+	private static DipDescription instance(IResource resource, IParent parent) {
+		DipDescription dipDescription = new DipDescription(resource, parent);
+		DipDescription storageInstance = DdeStorage.instance.get(dipDescription.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
+		
+		DdeStorage.instance.put(dipDescription.getDdeId(), dipDescription);
+		return dipDescription;
 	}
 	
 	private DipDescription(IResource resource, IParent parent) {
@@ -67,7 +68,7 @@ public class DipDescription extends DipElement implements IDescriptionSupport  {
 			IFile file = ResourcesUtilities.createFile(parent.resource(), name, descriptionContent, shell);
 			if (file.exists()){
 				DipDescription description = DipDescription.instance(file, parent); 
-				description.fDipElement = dipDocumentElement;
+				description.fDipElement = dipDocumentElement.getDdeId();
 				description.fDesciptionContent = descriptionContent;				
 				return description;
 			}			
@@ -78,9 +79,12 @@ public class DipDescription extends DipElement implements IDescriptionSupport  {
 	}
 	
 	public void setCorrespondingElement(){
-		fDipElement = findCorrespondingElement();
-		if (fDipElement != null){
-			fDipElement.setDipDescription(this);
+		IDipDocumentElement dipElement = findCorrespondingElement();
+		if (dipElement != null){
+			fDipElement = dipElement.getDdeId();
+			dipElement.setDipDescription(this);
+		} else {
+			fDipElement = null;
 		}
 	}
 	
@@ -88,9 +92,9 @@ public class DipDescription extends DipElement implements IDescriptionSupport  {
 		if (parent() instanceof IDipParent){
 			IDipParent dipParent = (IDipParent) parent();
 			String elementName = getElementName();
-			for (IDipElement dipElement: dipParent.getChildren()){			
-				if (dipElement instanceof IDipDocumentElement && elementName.equals(dipElement.name())){
-					return (IDipDocumentElement) dipElement;
+			for (IDdeID dipElement: dipParent.getChildren()){			
+				if (dipElement.isDocumentElement() && elementName.equals(dipElement.getName())){
+					return DdeStorage.instance.get(dipElement);
 				}
 			}			
 		}
@@ -126,7 +130,7 @@ public class DipDescription extends DipElement implements IDescriptionSupport  {
 	public void delete() {
 		try {
 			ResourcesUtilities.deleteResource(resource(), null);
-			parent().removeChild(this);
+			parent().removeChild(getDdeId());
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
@@ -143,7 +147,7 @@ public class DipDescription extends DipElement implements IDescriptionSupport  {
 	}
 
 	public IDipDocumentElement getDipDocElement(){
-		return fDipElement;
+		return DdeStorage.instance.get(fDipElement);
 	}
 	
 	public String getDescriptionContent(){

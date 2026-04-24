@@ -21,17 +21,50 @@ import java.util.stream.Collectors;
 import org.eclipse.swt.graphics.Point;
 
 import ru.dip.core.model.DipDescription;
+import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.finder.FindSettings;
 import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.IUnitDescription;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.form.FormPresentation;
 import ru.dip.core.utilities.TagStringUtilities;
 import ru.dip.core.utilities.text.Terms;
 
 public class UnitDescriptionPresentation extends UnitExtension implements IUnitDescription  {
 
+	public static IDdeID instance(IDipUnit element) {
+		UnitDescriptionPresentation descriptionPresentation = new UnitDescriptionPresentation(element);
+		UnitDescriptionPresentation storageInstance = DdeStorage.instance.get(descriptionPresentation.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance.getDdeId();
+		}
+		DdeStorage.instance.put(descriptionPresentation.getDdeId(), descriptionPresentation);
+		return descriptionPresentation.getDdeId();
+	}
+	
+	
+	private IDdeID fDdeId;
+	
 	public UnitDescriptionPresentation(IDipUnit element) {
 		super(element);
+		fDdeId = DdeID.ofUnitExtension(this, getDipUnitId());
+	}
+	
+	@Override
+	public void updateDdeID() {
+		fDdeId = DdeID.ofUnitExtension(this, getDipUnitId());
+	}
+	
+	@Override
+	public IDdeID getDdeId() {
+		return fDdeId;
+	}
+	
+	@Override
+	public DipElementType type() {
+		return DipElementType.UNIT_DESCRIPTION;
 	}
 	
 	@Override

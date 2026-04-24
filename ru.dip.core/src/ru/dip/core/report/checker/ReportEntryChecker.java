@@ -35,6 +35,7 @@ import ru.dip.core.report.model.condition.SimpleCondition;
 import ru.dip.core.report.model.condition.Value;
 import ru.dip.core.report.model.report.ReportEntry;
 import ru.dip.core.report.model.report.ReportRule;
+import ru.dip.core.storage.DdeStorage;
 
 public class ReportEntryChecker {
 	
@@ -131,7 +132,7 @@ public class ReportEntryChecker {
 	 */
 	private static List<IDipElement> filterUnitInRecursiveParent(Condition condition, IParent parent){
 		List<IDipElement> result = new ArrayList<>();
-		for (IDipElement dipElement: parent.getChildren()){
+		for (IDipElement dipElement: DdeStorage.instance.getList(parent.getChildren())){
 			if (dipElement instanceof IDipParent){
 				result.addAll(filterUnitInRecursiveParent(condition, (IDipParent) dipElement));
 			} else if (dipElement instanceof DipReservedFolder) {

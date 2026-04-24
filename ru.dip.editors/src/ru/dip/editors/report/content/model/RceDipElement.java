@@ -19,6 +19,8 @@ import org.eclipse.swt.graphics.Color;
 
 import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.editors.report.content.ReportContentModel;
 import ru.dip.ui.table.ktable.model.ContentContainer;
 import ru.dip.ui.table.ktable.model.ContentId;
@@ -35,13 +37,13 @@ public class RceDipElement implements IDipTableElement, IDipIdElement, IPresenta
 	private static final int DEFAULT_PRESENTATION_WIDTH = 200;
 
 	private final ContentContainer fContent = new ContentContainer();
-	private final IDipElement fDipElement;
+	private IDdeID fDipElement;
 	private final ITableNode fParent;
 	private int fNumber = 0;
 	private List<IDipTableElement> fLinkedElements;
 	
 	public RceDipElement(IDipElement element, ITableNode parent) {
-		fDipElement = element;
+		fDipElement = element.getDdeId();
 		fParent = parent;
 	}
 
@@ -155,7 +157,7 @@ public class RceDipElement implements IDipTableElement, IDipIdElement, IPresenta
 
 	@Override
 	public IDipDocumentElement dipDocElement() {
-		return (IDipDocumentElement) fDipElement;
+		return DdeStorage.instance.get(fDipElement);
 	}
 
 	@Override
@@ -181,6 +183,16 @@ public class RceDipElement implements IDipTableElement, IDipIdElement, IPresenta
 	@Override
 	public ITableNode parent() {
 		return fParent;
+	}
+
+	@Override
+	public void setDipElment(IDdeID id) {
+		fDipElement = id;
+	}
+
+	@Override
+	public IDdeID getDdeID() {
+		return fDipElement;
 	}
 	
 }

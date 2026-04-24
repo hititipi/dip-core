@@ -26,10 +26,13 @@ import ru.dip.core.annotation.CallChangeDipChildren;
 import ru.dip.core.annotation.ChangeDipChildren;
 import ru.dip.core.annotation.NoChangeDipChildren;
 import ru.dip.core.exception.SaveTableDIPException;
+import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.DipUnit;
+import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
-import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.table.TableWriter;
 
 public class DipTableUtilities {
@@ -38,21 +41,21 @@ public class DipTableUtilities {
 	// new folder
 	
 	public static boolean canNewFolderAfter(DipUnit unit){
-		IDipDocumentElement nextElement = getNextElement(unit);
-		return  (nextElement == null || nextElement instanceof IDipParent);
+		IDdeID nextElement = getNextElement(unit);
+		return  (nextElement == null || DipElementType.isFolderType(nextElement));
 	}
 	
 	public static IDipParent addNewFolderBefore(IDipDocumentElement element, IFolder folder) {
 		IDipParent parent = element.parent();
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
-		int index = children.indexOf(element);
+		List<IDdeID> children = parent.getDDEChildren();
+		int index = children.indexOf(element.getDdeId());
 		return parent.createNewFolder(folder, index);
 	}
 	
 	public static IDipParent addNewFolderAfter(IDipDocumentElement element, IFolder folder) {
 		IDipParent parent = element.parent();
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
-		int index = children.indexOf(element) + 1;
+		List<IDdeID> children = parent.getDDEChildren();
+		int index = children.indexOf(element.getDdeId()) + 1;
 		return parent.createNewFolder(folder, index);
 	}
 	
@@ -61,7 +64,7 @@ public class DipTableUtilities {
 	}
 	
 	public static IDipParent addNewFolderEnd(IDipParent parent, IFolder folder) {
-		int newLastIndex = parent.getDipDocChildrenList().size();
+		int newLastIndex = parent.getDDEChildren().size();
 		return parent.createNewFolder(folder, newLastIndex);
 	}
 	
@@ -75,16 +78,16 @@ public class DipTableUtilities {
 	public static IDipParent addIncludeFolderBefore(IDipDocumentElement element, IFolder folder, String name,
 			String description, boolean readOnly) {
 		IDipParent parent = element.parent();
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
-		int index = children.indexOf(element);
+		List<IDdeID> children = parent.getDDEChildren();
+		int index = children.indexOf(element.getDdeId());
 		return parent.includeFolder(folder, index, name, description, readOnly);
 	}
 	
 	public static IDipParent addIncludeFolderAfter(IDipDocumentElement element, IFolder folder, String name, 
 			String description, boolean readOnly) {
 		IDipParent parent = element.parent();
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
-		int index = children.indexOf(element) + 1;
+		List<IDdeID> children = parent.getDDEChildren();
+		int index = children.indexOf(element.getDdeId()) + 1;
 		return parent.includeFolder(folder, index, name, description, readOnly);
 	}
 	
@@ -95,7 +98,7 @@ public class DipTableUtilities {
 	
 	public static IDipParent addIncludeFolderEnd(IDipParent parent, IFolder folder, String name,
 			String description, boolean readOnly) {
-		int newLastIndex = parent.getDipDocChildrenList().size();
+		int newLastIndex = parent.getDDEChildren().size();
 		return parent.includeFolder(folder, newLastIndex, name, description, readOnly);
 	}
 
@@ -103,21 +106,21 @@ public class DipTableUtilities {
 	// new file
 	
 	public static boolean canNewFileBefore(IDipParent parent){
-		IDipDocumentElement previousElement = getPreviousElement(parent);
-		return (previousElement == null || previousElement instanceof DipUnit);
+		IDdeID previousElement = getPreviousElement(parent);
+		return (previousElement == null || DipElementType.isUnit(previousElement));
 	}
 	
 	public static IDipElement addNewFileBefore(IDipDocumentElement element, IFile file) {
 		IDipParent parent = element.parent();
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
-		int dipIndex = children.indexOf(element);
+		List<IDdeID> children = parent.getDDEChildren();
+		int dipIndex = children.indexOf(element.getDdeId());
 		return parent.createNewUnit(file, dipIndex);
 	}
 
 	public static IDipElement addNewFileAfter(IDipDocumentElement element, IFile file) {
 		IDipParent parent = element.parent();
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
-		int dipIndex = children.indexOf(element);
+		List<IDdeID> children = parent.getDDEChildren();
+		int dipIndex = children.indexOf(element.getDdeId());
 		return parent.createNewUnit(file, dipIndex + 1);
 	}
 	
@@ -149,14 +152,14 @@ public class DipTableUtilities {
 	
 	@NoChangeDipChildren
 	private static boolean canUp(DipUnit unit){
-		IDipDocumentElement previous = getPreviousElement(unit);
-		return previous instanceof DipUnit;	
+		IDdeID previous = getPreviousElement(unit);
+		return previous != null && DipElementType.isUnit(previous);	
 	}
 	
 	@NoChangeDipChildren
 	private static boolean canUp(IDipParent parent){
-		IDipDocumentElement previous = getPreviousElement(parent);
-		return previous instanceof IDipParent;
+		IDdeID previous = getPreviousElement(parent);
+		return previous != null && DipElementType.isFolderType(previous);
 	}
 	
 	/**
@@ -164,8 +167,10 @@ public class DipTableUtilities {
 	 */
 	@NoChangeDipChildren
 	public static boolean canUp(TreeSet<IDipDocumentElement> dipDocumentElements) {
-		IDipDocumentElement first = dipDocumentElements.first();		
-		if (first.getClass() != dipDocumentElements.last().getClass()) {
+		IDipDocumentElement first = dipDocumentElements.first();
+		IDipDocumentElement last = dipDocumentElements.last();
+
+		if (first.getClass() != last.getClass()) {
 			return false;
 		}
 		IDipParent parent = first.parent();
@@ -184,24 +189,27 @@ public class DipTableUtilities {
 		return canUp(first);
 	}
 	
+	// перенести в DipUtilities
 	@CallChangeDipChildren
 	public static void up(IDipDocumentElement element){
-		List<IDipDocumentElement> children = element.parent().getDipDocChildrenList();
-		int newIndex = children.indexOf(element) - 1;
-		moveElement(element, newIndex, children);
+		List<IDdeID> children = element.parent().getDDEChildren();
+		int newIndex = getIndex(element) - 1; 
+		moveElement(element.getDdeId(), newIndex, children);
+		saveModel(element.parent());
 	}
 	
 	@CallChangeDipChildren
 	public static void up(TreeSet<IDipDocumentElement> dipDocumentElements) {
 		IDipDocumentElement first = dipDocumentElements.first();	
-		IDipDocumentElement movedElement = getPreviousElement(first);
+		IDdeID movedElement = getPreviousElement(first);
 		IDipDocumentElement last = dipDocumentElements.last();
 		if (first == null || movedElement == null || last == null) {
 			return;
 		}
 		int newIndex = last.getIndex();		
-		List<IDipDocumentElement> children = first.parent().getDipDocChildrenList();
+		List<IDdeID> children = first.parent().getDDEChildren();
 		moveElement(movedElement, newIndex, children);
+		saveModel(first.parent());
 	}
 		
 	@NoChangeDipChildren
@@ -216,14 +224,14 @@ public class DipTableUtilities {
 	
 	@NoChangeDipChildren
 	private static boolean canDown(DipUnit unit){
-		IDipDocumentElement next = getNextElement(unit);
-		return next instanceof DipUnit;	
+		IDdeID next = getNextElement(unit);
+		return next != null && DipElementType.isUnit(next);	
 	}
 	
 	@NoChangeDipChildren
 	private static boolean canDown(IDipParent parent){
-		IDipDocumentElement next = getNextElement(parent);
-		return next instanceof IDipParent;
+		IDdeID next = getNextElement(parent);
+		return next != null && DipElementType.isFolderType(next);
 	}
 	
 	/**
@@ -232,7 +240,8 @@ public class DipTableUtilities {
 	@NoChangeDipChildren
 	public static boolean canDown(TreeSet<IDipDocumentElement> dipDocumentElements) {
 		IDipDocumentElement first = dipDocumentElements.first();		
-		if (first.getClass() != dipDocumentElements.last().getClass()) {
+		IDipDocumentElement last = dipDocumentElements.last();
+		if (first.getClass() != last.getClass()) {
 			return false;
 		}
 		IDipParent parent = first.parent();
@@ -248,33 +257,35 @@ public class DipTableUtilities {
 			}
 			currentIndex = index;			
 		}												
-		return canDown(dipDocumentElements.last());
+		return canDown(last);
 	}
 	
 	@CallChangeDipChildren
 	public static void down(IDipDocumentElement element){
-		List<IDipDocumentElement> children = element.parent().getDipDocChildrenList();
-		int newIndex = children.indexOf(element) + 1;
-		moveElement(element, newIndex, children);
+		List<IDdeID> children = element.parent().getDDEChildren();
+		int newIndex = getIndex(element) + 1;
+		moveElement(element.getDdeId(), newIndex, children);
+		saveModel(element.parent());
 	}
 	
 	@CallChangeDipChildren
 	public static void down(TreeSet<IDipDocumentElement> dipDocumentElements) {
 		IDipDocumentElement first = dipDocumentElements.first();	
 		IDipDocumentElement last = dipDocumentElements.last();
-		IDipDocumentElement movedElement = getNextElement(last);
+		IDdeID movedElement = getNextElement(last);
 		if (first == null || movedElement == null || last == null) {
 			return;
 		}
 		int newIndex = first.getIndex();			
-		List<IDipDocumentElement> children = first.parent().getDipDocChildrenList();
+		List<IDdeID> children = first.parent().getDDEChildren();
 		moveElement(movedElement, newIndex, children);
+		saveModel(first.parent());
 	}
 	
 	@ChangeDipChildren	
-	private static void moveElement(IDipDocumentElement element, int newIndex, List<IDipDocumentElement> parentChildren) {
-		parentChildren.remove(element);
-		parentChildren.add(newIndex, element);
+	private static void moveElement(IDdeID ddeId, int newIndex, List<IDdeID> parentChildren) {
+		parentChildren.remove(ddeId);
+		parentChildren.add(newIndex, ddeId);	
 	}
 	
 	//=====================================
@@ -296,16 +307,20 @@ public class DipTableUtilities {
 	//========================
 	// previous/next element
 	
-	public static  IDipDocumentElement getNextElement(IDipDocumentElement element){
-		List<IDipDocumentElement> children = element.parent().getDipDocChildrenList();
-		int index = children.indexOf(element);
+	public static  IDdeID getNextElement(IDipDocumentElement element){
+		// можно переделать чтобы возвращал DdeID
+		List<IDdeID> children = element.parent().getDDEChildren();
+		
+		//int index = children.indexOf(element);
+		int index = getIndex(element);	
 		if (index == children.size() - 1){
 			return null;
 		}
 		return children.get(index + 1);
 	}
 	
-	public static IDipDocumentElement getPreviousElement(IDipDocumentElement element){
+	// переделать  чтобы возввращал IDdeID
+	public static IDdeID getPreviousElement(IDipDocumentElement element){
 		if (element == null) {
 			return null;
 		}
@@ -313,19 +328,20 @@ public class DipTableUtilities {
 		if (parent == null) {
 			return null;
 		}		
-		int index = parent.getDipDocChildrenList().indexOf(element);
+		
+		List<IDdeID> children = parent.getDDEChildren();
+		int index = getIndex(element);	
 		if (index <= 0){
 			return null;
 		}
-		IDipDocumentElement dipDocElement = parent.getDipDocChildrenList().get(index - 1);
-		return dipDocElement;
+		return children.get(index - 1);
 	}
 	
 	public static int getFirstParentIndex(IDipParent parent){
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
+		List<IDdeID> children = parent.getDDEChildren();
 		for (int i = 0; i < children.size(); i++){
-			IDipDocumentElement element = children.get(i);
-			if (element instanceof IDipParent){
+			IDdeID element = children.get(i);			
+			if (DipElementType.isFolderType(element.getType())) {
 				return i;
 			}
 		}
@@ -333,24 +349,17 @@ public class DipTableUtilities {
 	}
 	
 	public static IDipDocumentElement getLastUnitElement(IDipParent parent){
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
-		IDipDocumentElement last = null;
-		for (IDipDocumentElement dipDocElement: children){
-			if (dipDocElement instanceof DipUnit){
-				last = dipDocElement;
-			} else {
-				return last;
-			}
-		}
-		return last;
+		int index = getLastUnitIndex(parent);
+		IDdeID ddeId = parent.getDDEChildren().get(index);
+		return DdeStorage.instance.get(ddeId);
 	}
 	
 	public static int getLastUnitIndex(IDipParent parent) {
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();		
+		List<IDdeID> children = parent.getDDEChildren();		
 		int result = -1;
 		for (int i = 0; i < children.size(); i++){
-			IDipDocumentElement element = children.get(i);
-			if (element instanceof IDipParent){
+			IDdeID element = children.get(i);
+			if (DipElementType.isFolderType(element.getType())){
 				return result;
 			} else {
 				result++;
@@ -359,19 +368,21 @@ public class DipTableUtilities {
 		return result;
 	}
 	
+	
+	// можно удалить т.к. есть метод getIndex в IDipDocumentElement
 	public static int getIndex(IDipDocumentElement element) {
-		List<IDipDocumentElement> children = element.parent().getDipDocChildrenList();		
-		return children.indexOf(element);
+		List<IDdeID> children = element.parent().getDDEChildren();		
+		return children.indexOf(element.getDdeId());
 	}
 	
 	public static IDipParent getLastParent(IDipParent parent) {
-		List<IDipDocumentElement> children = parent.getDipDocChildrenList();
+		List<IDdeID> children = parent.getDDEChildren();		
 		if (children.isEmpty()) {
 			return null;
 		}
-		IDipDocumentElement last = children.get(children.size() - 1);
-		if (last instanceof IDipParent) {
-			return (IDipParent) last;
+		IDdeID last = children.get(children.size() - 1);
+		if (DipElementType.isFolderType(last.getType())) {
+			return (IDipParent) DdeStorage.instance.get(last);
 		}
 		return null;
 	}
@@ -411,8 +422,8 @@ public class DipTableUtilities {
 		}
 		String previousName = previous.name();
 		if (previousName.length() < stepStr.length()){
-			IDipDocumentElement newPrevious = getPreviousElement(previous);
-			return getNextNumber(stepStr, newPrevious);
+			IDdeID newPrevious = getPreviousElement(previous);
+			return getNextNumber(stepStr, DdeStorage.instance.get(newPrevious));
 		}
 		String previousNumberString = previousName.substring(0, stepStr.length());
 		try {
@@ -425,8 +436,8 @@ public class DipTableUtilities {
 		} catch (NumberFormatException ignore){
 			// NOP
 		}
-		IDipDocumentElement newPrevious = getPreviousElement(previous);
-		return getNextNumber(stepStr, newPrevious);		
+		IDdeID newPrevious = getPreviousElement(previous);
+		return getNextNumber(stepStr, DdeStorage.instance.get(newPrevious));		
 	}
 	
 	public static String getFolderNextNumber(IDipParent parent, IDipDocumentElement previous){		
@@ -446,8 +457,8 @@ public class DipTableUtilities {
 		}
 		String previousName = previous.name();
 		if (previousName.length() < stepStr.length()){
-			IDipDocumentElement newPrevious = getPreviousElement(previous);
-			return getNextNumber(stepStr, newPrevious);
+			IDdeID newPrevious = getPreviousElement(previous);
+			return getNextNumber(stepStr, newPrevious.getElement());
 		}
 		String previousNumberString = previousName.substring(0, stepStr.length());
 		try {
@@ -460,8 +471,8 @@ public class DipTableUtilities {
 		} catch (NumberFormatException ignore){
 			// NOP
 		}
-		IDipDocumentElement newPrevious = getPreviousElement(previous);
-		return getNextNumber(stepStr, newPrevious);		
+		IDdeID newPrevious = getPreviousElement(previous);
+		return getNextNumber(stepStr, newPrevious.getElement());		
 	}
 	
 	public static String getStartFolderNumber(IDipParent parent) {
@@ -473,7 +484,7 @@ public class DipTableUtilities {
 	
 	public static String getEndFolderNumber(IDipParent parent) {
 		if (parent.isFolderNumeration()) {			
-			List<IDipDocumentElement> children = parent.getDipDocChildrenList();
+			List<IDipDocumentElement> children = parent.getDdeElements();
 			if (children.isEmpty()) {
 				return null;
 			}			

@@ -24,12 +24,12 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
-import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.IDipComment;
-import ru.dip.core.model.interfaces.IDipElement;
-import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.model.interfaces.IDipParent;
+import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.ITextComment;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.FileUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 
@@ -37,15 +37,15 @@ public class DipFolderComment extends DipElement implements IDipComment  {
 
 	public static final String FILE_NAME = ".r";
 	
-	public static DipFolderComment instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.FOLDER_COMMENT);
-		if (element == null) {
-			DipFolderComment dipFolderComment = new DipFolderComment(resource, parent);
-			DipRoot.getInstance().putElement(dipFolderComment);
-			return dipFolderComment;
-		} else {
-			return (DipFolderComment) element;
+	private static DipFolderComment instance(IResource resource, IParent parent) {
+		DipFolderComment dipFolderComment = new DipFolderComment(resource, parent);
+		DipFolderComment storageInstance = DdeStorage.instance.get(dipFolderComment.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
+		
+		DdeStorage.instance.put(dipFolderComment.getDdeId(), dipFolderComment);
+		return dipFolderComment;
 	}
 	
 	public static DipFolderComment createExistsDipComment(IFile file, IParent parent){
@@ -100,7 +100,7 @@ public class DipFolderComment extends DipElement implements IDipComment  {
 	public void delete() {
 		try {
 			ResourcesUtilities.deleteResource(resource(), null);
-			parent().removeChild(this);
+			parent().removeChild(this.getDdeId());
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}

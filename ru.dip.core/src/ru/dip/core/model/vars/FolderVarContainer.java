@@ -23,15 +23,28 @@ import ru.dip.core.model.DipProject;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 
 /**
  * Обвертка на VarContainer Используется для отображения внутри папок
  */
 public class FolderVarContainer implements IVarContainer, IDipElement {
 
+	public static FolderVarContainer isntance(VarContainer varContainer) {
+		FolderVarContainer folderVarContainer = new FolderVarContainer(varContainer);
+		DdeStorage.instance.put(folderVarContainer.getDdeId(), folderVarContainer);
+		return folderVarContainer;
+	}
+	
+	@Override
+	public IDdeID getDdeId() {
+		return fVarContainer.getDdeId();
+	}
+
 	private final VarContainer fVarContainer;
 
-	public FolderVarContainer(VarContainer container) {
+	private FolderVarContainer(VarContainer container) {
 		fVarContainer = container;
 	}
 
@@ -50,7 +63,7 @@ public class FolderVarContainer implements IVarContainer, IDipElement {
 	}
 
 	@Override
-	public IDipElement getChild(String name) {
+	public IDdeID getChild(String name) {
 		return fVarContainer.getChild(name);
 	}
 
@@ -133,6 +146,11 @@ public class FolderVarContainer implements IVarContainer, IDipElement {
 	public IParent parent() {
 		return fVarContainer;
 	}
+	
+	@Override
+	public IDdeID parentDdeId() {
+		return fVarContainer.getDdeId();
+	}
 
 	@Override
 	public void setParent(IParent parent) {
@@ -165,17 +183,17 @@ public class FolderVarContainer implements IVarContainer, IDipElement {
 	}
 
 	@Override
-	public List<? extends IDipElement> getChildren() {
+	public List<IDdeID> getChildren() {
 		return fVarContainer.getChildren();
 	}
-
+	
 	@Override
 	public boolean hasChildren() {
 		return fVarContainer.hasChildren();
 	}
 
 	@Override
-	public void removeChild(IDipElement child) {
+	public void removeChild(IDdeID child) {
 		fVarContainer.removeChild(child);
 	}
 
@@ -186,5 +204,11 @@ public class FolderVarContainer implements IVarContainer, IDipElement {
 
 	@Override
 	public void dispose() {}
+
+	@Override
+	public Variable getVariable(String name) {
+		return fVarContainer.getVariable(name);
+	}
+
 
 }

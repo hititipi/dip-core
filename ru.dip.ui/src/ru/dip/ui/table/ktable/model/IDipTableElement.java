@@ -13,6 +13,8 @@
  *******************************************************************************/
 package ru.dip.ui.table.ktable.model;
 
+import ru.dip.core.storage.IDdeID;
+
 public interface IDipTableElement extends IDipDocTablePaintable, IPresentationElement, IidElement, INumberElement {
 	
 	ITableNode parent();
@@ -20,5 +22,7 @@ public interface IDipTableElement extends IDipDocTablePaintable, IPresentationEl
 	boolean isDiff();	
 	
 	boolean isVisible();
+
+	void setDipElment(IDdeID id);
 	
 }

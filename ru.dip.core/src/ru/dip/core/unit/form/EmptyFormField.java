@@ -14,11 +14,22 @@
 package ru.dip.core.unit.form;
 
 import ru.dip.core.model.interfaces.IDipUnit;
+import ru.dip.core.storage.DdeStorage;
 
 public class EmptyFormField extends FormField {
 
-	public EmptyFormField(IDipUnit unit) {
-		super(unit, null);
+	public static EmptyFormField instance(IDipUnit unit) {
+		EmptyFormField formField = new EmptyFormField(unit);
+		EmptyFormField storageInstance = DdeStorage.instance.get(formField.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
+		}
+		DdeStorage.instance.put(formField.getDdeId(), formField);
+		return formField;
+	}
+	
+	private EmptyFormField(IDipUnit unit) {
+		super(unit, null);		
 	}
 	
 	@Override

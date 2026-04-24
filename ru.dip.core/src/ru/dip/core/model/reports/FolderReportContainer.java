@@ -24,15 +24,25 @@ import ru.dip.core.model.DipProject;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 
 /**
  * Обвертка на ReportContainer Используется для отображения внутри папок
  */
 public class FolderReportContainer implements IReportContainer, IDipElement {
 
+	public static FolderReportContainer instance(ReportContainer container) {
+		FolderReportContainer reportContainer = new FolderReportContainer(container);
+		IDdeID id = reportContainer.getDdeId();
+		DdeStorage.instance.put(id, reportContainer);
+		return reportContainer;
+	}
+	
+	
 	private final ReportContainer fReportContainer;
 
-	public FolderReportContainer(ReportContainer container) {
+	private FolderReportContainer(ReportContainer container) {
 		fReportContainer = container;
 	}
 
@@ -51,12 +61,12 @@ public class FolderReportContainer implements IReportContainer, IDipElement {
 	}
 
 	@Override
-	public List<Report> getReports() {
+	public List<IDdeID> getReports() {
 		return fReportContainer.getReports();
 	}
 	
 	@Override
-	public IDipElement getChild(String name) {
+	public IDdeID getChild(String name) {
 		return fReportContainer.getChild(name);
 	}
 
@@ -119,6 +129,11 @@ public class FolderReportContainer implements IReportContainer, IDipElement {
 	public IParent parent() {
 		return fReportContainer;
 	}
+	
+	@Override
+	public IDdeID parentDdeId() {
+		return fReportContainer.getDdeId();
+	}
 
 	@Override
 	public void setParent(IParent parent) {
@@ -151,7 +166,7 @@ public class FolderReportContainer implements IReportContainer, IDipElement {
 	}
 
 	@Override
-	public List<? extends IDipElement> getChildren() {
+	public List<IDdeID> getChildren() {
 		return fReportContainer.getChildren();
 	}
 
@@ -161,7 +176,7 @@ public class FolderReportContainer implements IReportContainer, IDipElement {
 	}
 
 	@Override
-	public void removeChild(IDipElement child) {
+	public void removeChild(IDdeID child) {
 		fReportContainer.removeChild(child);
 	}
 
@@ -177,5 +192,10 @@ public class FolderReportContainer implements IReportContainer, IDipElement {
 
 	@Override
 	public void dispose() {		
+	}
+
+	@Override
+	public IDdeID getDdeId() {
+		return fReportContainer.getDdeId();
 	}
 }

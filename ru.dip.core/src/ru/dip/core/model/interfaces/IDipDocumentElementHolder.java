@@ -13,13 +13,17 @@
  *******************************************************************************/
 package ru.dip.core.model.interfaces;
 
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.form.FieldUnity;
 import ru.dip.core.unit.form.FormField;
 import ru.dip.core.unit.form.FormPresentation;
 
 public interface IDipDocumentElementHolder {
 
+	IDdeID getDdeID();
+	
 	IDipDocumentElement dipDocElement();
+	
 			
 	public default boolean isDisable() {
 		return dipDocElement().isDisabledInDocument();

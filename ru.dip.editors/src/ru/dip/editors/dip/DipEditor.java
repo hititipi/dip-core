@@ -40,7 +40,7 @@ import org.eclipse.ui.part.FileEditorInput;
 
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.editors.Messages;
 import ru.dip.ui.action.hyperlink.ReqLink;
@@ -109,7 +109,8 @@ public class DipEditor extends TextEditor {
 			Path workspaceProjectPath = Paths.get(project.getLocationURI());
 			if (projectPath.equals(workspaceProjectPath)) {
 				if (DipNatureManager.hasNature(project)) {
-					DipProject dipProject = DipRoot.getInstance().getDipProject(project);
+					//DipProject dipProject = DipRoot.getInstance().getDipProject(project);
+					 DipProject dipProject = DdeStorage.instance.getOrCreate(project);
 					ReqLink.openTable(dipProject.getTable());
 				} else {
 					MessageDialog.openError(site.getShell(), Messages.DipEditor_OpenDIPErrorTitle,

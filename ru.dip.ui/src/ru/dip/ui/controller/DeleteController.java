@@ -136,7 +136,7 @@ public class DeleteController {
 	}
 	
 	private DeleteResultOperation doDelete() throws DeleteDIPException, TmpCopyException {
-		return  DipUtilities.deleteElements(fElements, fReserve, fDeleteProjectContent, getShell());
+		return DipUtilities.deleteElements(fElements, fReserve, fDeleteProjectContent, getShell());
 	}
 	
 	public Shell getShell() {

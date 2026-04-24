@@ -27,13 +27,15 @@ import ru.dip.core.form.model.Field;
 import ru.dip.core.model.finder.FindSettings;
 import ru.dip.core.model.finder.FormFinderManager;
 import ru.dip.core.model.finder.IFindResult;
+import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.IFindable;
 import ru.dip.core.model.interfaces.IGlossaryPoints;
-import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.ITextPresentation;
 import ru.dip.core.schema.FieldShowProperties;
 import ru.dip.core.schema.FormShowProperties;
 import ru.dip.core.schema.Schema;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.GlossaryPoints;
 import ru.dip.core.unit.TablePresentation;
 import ru.dip.core.unit.TextPresentation;
@@ -43,7 +45,7 @@ import ru.dip.core.unit.md.MdFormatPoints;
 public class FormPresentation extends TablePresentation implements ITextPresentation, IFindable, IFormFields {
 
 	private FormReader fReader;
-	private List<FormField> fFormFields;
+	private List<IDdeID> fFormFields;
 	private Point fTitleBoldPoint;   // для жирного шрифта заголовка
 	private List<Point> fTitles = new ArrayList<>();
 	private MdFormatPoints fMdFormatPoints = new MdFormatPoints();	
@@ -51,7 +53,6 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 	private final IGlossaryPoints fGlossaryPoints;
 	private final FormFinderManager fFinderManager;
 
-	
 	public FormPresentation(IDipUnit unit) {
 		super(unit);
 		fFormShowSettings = getUnit().dipProject().getSchemaModel().findFormSettings(fReader.getShemaName());
@@ -64,9 +65,9 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 		fReader = new FormReader(getUnit().resource());
 		fReader.read();
 		List<Field> fields = fReader.getFields();
-		fFormFields = fields.stream().map(f -> new FormField(getUnit(), f)).collect(Collectors.toList());
+		fFormFields = fields.stream().map(f -> FormField.instance(getUnit(), f).getDdeId()).collect(Collectors.toList());
 		if (fFormFields.isEmpty()) {
-			fFormFields.add(new EmptyFormField(getUnit()));
+			fFormFields.add(EmptyFormField.instance(getUnit()).getDdeId());
 		}
 	}
 	
@@ -82,15 +83,14 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 		}
 	}
 	
-	public FormField getFormFieldByName(String name) {
-		for (FormField formField: fFormFields) {
-			if (formField.getField().getName().equals(name)) {
-				return formField;
+	public FormField getFormFieldByName(String name) {		
+		for (IDdeID formField: fFormFields) {
+			if (formField.getAdditionalName().equals(name)) {
+				return DdeStorage.instance.get(formField);
 			}
 		}
 		return null;
 	}
-	
 	
 	public String tablePresentation(FormSettings formSettings,
 			MarkdownSettings mdSettings, int lineLength) {
@@ -101,8 +101,7 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 			FormShowProperties formProperties, MarkdownSettings mdSettings, int lineLength) {
 		clearTitlePoints();
 		FormPresentationBuilder builder = new FormPresentationBuilder(this , fMdFormatPoints, 
-				formSettings, formProperties,  mdSettings, lineLength);
-		
+				formSettings, formProperties,  mdSettings, lineLength);		
 		if (formSettings.isDefaultFixedContent()) {
 			String fixedField = fReader.fixedField();			
 			if (fixedField != null && !fixedField.isEmpty()) {
@@ -119,9 +118,9 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 	
 	private String fixedFieldPresentation(String fixedField, FormPresentationBuilder builder) {
 		FormField formField = null;
-		for (FormField f: fFormFields) {
-			if (fixedField.equals(f.getField().getName())) {
-				formField = f;
+		for (IDdeID f: fFormFields) {
+			if (fixedField.equals(f.getName())) {
+				formField = DdeStorage.instance.get(f);
 				break;
 			}
 		}
@@ -203,8 +202,7 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 	/**
 	 * Первое видимое поле
 	 */
-	public int firstVisibleField(IFormSettings formSetting) {
-		
+	public int firstVisibleField(IFormSettings formSetting) {		
 		for (int i = 0; i < getFields().size(); i++) {
 			if (isVisible(formSetting, getFields().get(i))){
 				return i;
@@ -218,19 +216,22 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 	
 	@Override
 	public String getContent() {
-		return fFormFields.stream().map(FormField::getField).map(Field::getValue)
+		return 
+				DdeStorage.instance.getList(fFormFields).stream()
+					.map(FormField.class::cast)
+					.map(FormField::getField).map(Field::getValue)
 				.collect(Collectors.joining(" "));
 	}
 	
 	public String getContent(IFormSettings formSettings) {				
-		return fFormFields.stream()
+		return DdeStorage.instance.getList(fFormFields).stream()
+				.map(FormField.class::cast)
 				.map(FormField::getField)
 				.filter(f ->  isVisible(formSettings, f))
 				.map(Field::getValue)
 				.map(s -> TextPresentation.prepareText(s, getDipUnit()))
 				.collect(Collectors.joining(" "));
 	}
-	
 	
 	@Override
  	public boolean contains(String text, FindSettings findSettings) {
@@ -298,14 +299,14 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 	
 	@Override
 	public void removeIfFind(Collection<String> terms) {
-		for (FormField field: fFormFields) {
+		for (FormField field: getFormFields()) {
 			field.removeIfFind(terms);
 		}	
 	}
 	
 	@Override
 	public void findTerms(Set<String> terms) {
-		for (FormField field: fFormFields) {
+		for (FormField field: getFormFields()) {
 			field.findTerms(terms);
 		}			
 	}
@@ -315,7 +316,7 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 	
 	@Override
 	public void findVars(Set<String> vars) {
-		for (FormField field: fFormFields) {
+		for (FormField field: getFormFields()) {
 			field.findVars(vars);
 		}			
 	}
@@ -362,7 +363,7 @@ public class FormPresentation extends TablePresentation implements ITextPresenta
 	
 	@Override
 	public List<FormField> getFormFields(){
-		return fFormFields;
+		return DdeStorage.instance.<FormField>getObjList(fFormFields);
 	}
 
 	@Override

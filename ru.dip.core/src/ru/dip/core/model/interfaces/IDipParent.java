@@ -25,6 +25,7 @@ import org.eclipse.core.resources.IFolder;
 import ru.dip.core.model.finder.IFindPoints;
 import ru.dip.core.model.reports.IReportContainer;
 import ru.dip.core.model.vars.IVarContainer;
+import ru.dip.core.storage.IDdeID;
 
 public interface IDipParent extends IDipDocumentElement,IParent, IFindPoints {
 
@@ -59,8 +60,10 @@ public interface IDipParent extends IDipDocumentElement,IParent, IFindPoints {
 	//=========================
 	// get children
 	
-	List<IDipDocumentElement> getDipDocChildrenList();
+	List<IDdeID> getDDEChildren();
 	
+	List<IDipDocumentElement> getDdeElements();
+
 	IDipDocumentElement[] getOneListChildren();
 		
 	Object[] getDipChildren();

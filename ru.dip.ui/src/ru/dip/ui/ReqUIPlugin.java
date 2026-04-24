@@ -32,6 +32,7 @@ import org.osgi.framework.BundleContext;
 import ru.dip.core.model.DipContainer;
 import ru.dip.core.model.DipProject;
 import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.ui.action.duplicate.DuplicateDialog;
@@ -97,8 +98,7 @@ public class ReqUIPlugin extends AbstractUIPlugin {
 		PlatformUI.getWorkbench().getActiveWorkbenchWindow().getSelectionService()
 				.addSelectionListener(GlossaryHover.getInstance());
 		PlatformUI.getWorkbench().getActiveWorkbenchWindow().getSelectionService()
-				.addSelectionListener(VarHover.getInstance());
-		
+				.addSelectionListener(VarHover.getInstance());		
 		PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
 				.addPartListener(new DipTocWorkbenchListener());
 		PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
@@ -121,6 +121,8 @@ public class ReqUIPlugin extends AbstractUIPlugin {
 			public void partVisible(IWorkbenchPartReference partRef) {
 				if (DipTableEditor.EDITOR_ID.equals(partRef.getId())) {
 					DipTableEditor editor = (DipTableEditor) partRef.getPart(false);
+					editor.checkInput();
+					
 					DipProject dipProject = editor.getDipProject();
 					checkProjectDuplicateNames(dipProject);
 				}
@@ -192,8 +194,8 @@ public class ReqUIPlugin extends AbstractUIPlugin {
 	}
 	
 	private void checkChildren(DipContainer container) {
-		if (container.hasChildren()) {
-			for (IDipElement element: container.getChildren()) {
+		if (container.hasChildren()) {			
+			for (IDipElement element: DdeStorage.instance.getList(container.getChildren())) {
 				if (element instanceof DipContainer) {
 					checkDuplicateNames((DipContainer) element);
 				}

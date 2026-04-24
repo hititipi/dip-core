@@ -57,7 +57,8 @@ public class PresentationCellRender extends DipRender {
 		gc.setForeground(ColorProvider.BLACK);
 		if (object instanceof TableElement) {						
 			TableElement tableElement = (TableElement) object;
-			IDipDocumentElement dipDocElement = tableElement.dipDocElement();				
+			IDipDocumentElement dipDocElement = tableElement.dipDocElement();
+			//System.out.println("PresentationCellRender: " + tableElement + "  "  + dipDocElement);			
 			GCUtils.fillBackground(gc, rect, tableElement);
 			drawDiff(gc, rect, dipDocElement);
 			Rectangle indentRect = computeIndentRectangle(rect, col, (DipTableModel) model, tableElement, gc);
@@ -181,7 +182,7 @@ public class PresentationCellRender extends DipRender {
 	
 	private void drawUnitPresentation(int row, TableElement tableElement, UnitPresentation dipDocElement, GC gc, Rectangle indentRect) {
 		TablePresentation tablePresentation = ((UnitPresentation) dipDocElement).getPresentation();
-		Rectangle rect = rectangle(indentRect, row);		
+		Rectangle rect = rectangle(indentRect, row);
 		fModel.reqPainter().paintTablePresentation(width(), gc, rect, tablePresentation, tableElement);	
 	}
 	

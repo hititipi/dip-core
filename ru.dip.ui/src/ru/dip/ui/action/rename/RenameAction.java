@@ -61,6 +61,7 @@ public class RenameAction extends WorkspaceAction {
 	
 	private void renameDipDocElement(){
 		RenameWizard  wizard = new RenameWizard(fSelectionDipElement);
+		String oldName = fSelectionDipElement.name();
 		WizardDialog wd = new WizardDialog(fShellProvider.getShell(), wizard);
 		wd.setTitle(wizard.getWindowTitle());
 		if (wd.open() == WizardDialog.OK){									
@@ -72,7 +73,7 @@ public class RenameAction extends WorkspaceAction {
 			if (fSelectionDipElement instanceof IDipDocumentElement) {
 				IDipDocumentElement dde = (IDipDocumentElement) fSelectionDipElement;
 				DipEditorRegister.instance.findEditors(dde)
-					.forEach(editor -> editor.updater().updateAfterRename(dde.parent(), wizard.getName(), false));								
+					.forEach(editor -> editor.updater().updateAfterRename(dde.parent(), wizard.getName(), oldName, false));								
 			}
 			
 			// обновить ресурсы
@@ -83,7 +84,7 @@ public class RenameAction extends WorkspaceAction {
 			}
 			
 			// обновить project exploter
-			WorkbenchUtitlities.updateNavigatorServiceExplorer();			
+			WorkbenchUtitlities.getProjectExplorer().getCommonViewer().refresh();
 		}
 	}
 	

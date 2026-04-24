@@ -13,7 +13,6 @@
  *******************************************************************************/
 package ru.dip.core;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -35,11 +34,10 @@ import org.eclipse.ui.WorkbenchException;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.GITUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
-import ru.dip.core.utilities.WorkbenchUtitlities;
 import ru.dip.core.utilities.start.DipStartUtilities;
 
 /**
@@ -103,10 +101,10 @@ public class DipCorePlugin extends AbstractUIPlugin {
 					if (isGitSubmoduleRecurse()) {
 						GITUtilities.updateSubmodules(e.getRepository());
 					}
-					if (getGitUpdate()) {
+					/*if (getGitUpdate()) {
 						File repoDir = e.getRepository().getDirectory().getParentFile();
 						WorkbenchUtitlities.updateAfterGitChanges(repoDir);
-					}
+					}*/
 				}
 			});
 		} catch (Exception e) {
@@ -166,7 +164,7 @@ public class DipCorePlugin extends AbstractUIPlugin {
 }
 	
 	public void stop(BundleContext context) throws Exception {
-		DipRoot.getInstance().clear();
+		DdeStorage.instance.clear();
 		plugin = null;
 		super.stop(context);
 	}

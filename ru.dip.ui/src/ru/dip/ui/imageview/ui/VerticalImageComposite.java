@@ -53,6 +53,9 @@ public class VerticalImageComposite implements IImageComposite {
 
 	@Override
 	public void updateTable() {
+		if (fTable.isDisposed()) {
+			return;
+		}
 		fTable.setItemCount(units().size());
 		fTable.redraw();
 	}

@@ -18,16 +18,18 @@ import org.eclipse.core.resources.IResource;
 import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.DipProject;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.utilities.text.TermRegexBuilder;
 
 public class GlossaryField implements IDipElement {
-	
+		
 	public static final int NAME_MAX_LENGTH = 60;
 	
 	private String fName;
 	private String fValue;
-	private GlossaryFolder fGlossFolder;
+	private GlossaryFolder fGlossFolder; // возможно стоит заменить DDeID
 	
 	public GlossaryField(String name, String value, GlossaryFolder folder) {
 		fName = name.trim();		
@@ -35,6 +37,12 @@ public class GlossaryField implements IDipElement {
 		fGlossFolder = folder;
 	}
 
+	@Override
+	public DdeID getDdeId() {
+		throw new UnsupportedOperationException();
+
+	}
+	
 	public String getValue(){
 		return fValue;
 	}
@@ -96,6 +104,12 @@ public class GlossaryField implements IDipElement {
 	@Override
 	public GlossaryFolder parent() {
 		return fGlossFolder;
+	}
+	
+	@Override
+	public IDdeID parentDdeId() {
+		// TODO Auto-generated method stub
+		return fGlossFolder.getDdeId();
 	}
 
 	@Override

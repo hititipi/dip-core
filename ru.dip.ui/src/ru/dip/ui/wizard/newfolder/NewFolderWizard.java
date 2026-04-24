@@ -29,6 +29,7 @@ import org.eclipse.ui.IWorkbench;
 import ru.dip.core.model.DipReservedFolder;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.table.TableWriter;
 import ru.dip.core.utilities.DipTableUtilities;
 import ru.dip.core.utilities.DipUtilities;
@@ -102,7 +103,7 @@ public class NewFolderWizard extends Wizard implements INewWizard  {
 
 	private boolean unreserveFolder() {
 		IFolder folder = fPage.getFolder();
-		IDipElement element = fPage.getParent().getChild(folder.getName());
+		IDipElement element = DdeStorage.instance.get(fPage.getParent().getChild(folder.getName()));
 		if (element instanceof DipReservedFolder && folder.exists()) {
 			DipReservedFolder reservedFolder = (DipReservedFolder) element;
 			ReservedUtilities.deleteUnreserveMarker(reservedFolder, getShell());

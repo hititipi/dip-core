@@ -18,8 +18,8 @@ import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionEvent;
 
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.vars.Variable;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.ui.WSelectionListener;
 import ru.dip.core.utilities.ui.hover.AbstractSelectionHover;
 
@@ -53,11 +53,11 @@ public class VarHover extends AbstractSelectionHover {
 	
 	@Override
 	protected  String getText(IFile file, String text){	
-		DipProject dipProject = DipRoot.getInstance().getDipProject(file.getProject());
+		DipProject dipProject = DdeStorage.instance.getOrCreate(file.getProject());
 		if (text == null || text.isEmpty()){
 			return null;
 		}			
-		Variable variable = dipProject.getVariablesContainer().getChild(text);
+		Variable variable = dipProject.getVariablesContainer().getVariable(text);
 		if (variable == null){
 			return null;
 		}

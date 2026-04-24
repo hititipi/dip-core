@@ -37,13 +37,15 @@ import org.eclipse.swt.graphics.Point;
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.DipTableContainer;
+import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IFindable;
 import ru.dip.core.model.interfaces.IGlossarySupport;
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
-import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.text.Terms;
 
@@ -54,9 +56,17 @@ public class GlossaryFolder implements IParent {
 		if (!DipNatureManager.hasNature(file)){
 			return null;			
 		}
-		DipProject dipProject = DipRoot.getInstance().getDipProject(file.getProject());
+		DipProject dipProject = DdeStorage.instance.getOrCreate(file.getProject());
 		return  dipProject.getGlossaryFolder();
 	}
+	
+	
+	public static GlossaryFolder instance(IFile glossFile, DipProject project) {
+		GlossaryFolder glossaryFolder = new GlossaryFolder(glossFile, project);
+		DdeStorage.instance.put(glossaryFolder.getDdeId(), glossaryFolder);
+		return glossaryFolder;
+	}
+	
 	
 	public static final String GLOS_FILE = ".glos";
 	public static final String GLOS_FOLDER = "Glossary";
@@ -66,16 +76,23 @@ public class GlossaryFolder implements IParent {
 
 	private IFile fGlossaryFile;
 	private Path fGlossaryPath; 
-	private DipProject fDipProject;
+	private IDdeID fDipProject;
 	private List<IGlossaryListener> fListeners = new ArrayList<>();
 	private List<GlossaryField> fFields = new ArrayList<>();
 	private String fUppderCaseWordsRegex = null;
-	private String fLowerCaseWordsRegex = null;
+	private String fLowerCaseWordsRegex = null;	
+	private IDdeID fDde;
 	
-	public GlossaryFolder(IFile glossFile, DipProject project) {
+	@Override
+	public IDdeID getDdeId() {
+		return fDde;
+	}
+	
+	protected GlossaryFolder(IFile glossFile, DipProject project) {
 		fGlossaryFile = glossFile;
-		fDipProject = project;
+		fDipProject =  project != null ? project.getDdeId() : null;
 		fGlossaryPath = Paths.get(fGlossaryFile.getLocation().toOSString());
+		fDde = DdeID.ofGlossaryFolder(this);
 		try {
 			readGlossary();
 		} catch (IOException e) {
@@ -124,7 +141,7 @@ public class GlossaryFolder implements IParent {
 	public void pasteFields(List<GlossaryField> addFields, List<GlossaryField> changeFields) throws IOException{
 		fFields.addAll(addFields);
 		for (GlossaryField field: changeFields){
-			GlossaryField removeField = getChild(field.name());
+			GlossaryField removeField = getField(field.name());
 			if (removeField != null){
 				fFields.remove(removeField);
 			}
@@ -133,7 +150,7 @@ public class GlossaryFolder implements IParent {
 		saveGlossary();
 	}
 	
-	protected List<GlossaryField> getFields() {
+	public List<GlossaryField> getFields() {
 		return fFields;
 	}
 	
@@ -195,14 +212,16 @@ public class GlossaryFolder implements IParent {
 	// check glossary
 	
 	public List<GlossaryField> findUnsedFields() {
-		List<GlossaryField> fields = fDipProject.getGlossaryFolder().getChildren();		
+		DipProject dipProject = DdeStorage.instance.get(fDipProject);
+		
+		List<GlossaryField> fields = dipProject.getGlossaryFolder().getAllFields();		
 		Map<String, GlossaryField> regs = new HashMap<>();
 		for (GlossaryField field: fields) {
 			String regex = Terms.createRegexForGlossEntry(field.name());
 			regs.put(regex, field);			
 		}		
 		List<String> regList = new ArrayList<>(regs.keySet());
-		findTerms(fDipProject, regList);
+		findTerms(dipProject, regList);
 		return regList.stream().map(regs::get).collect(Collectors.toList());		
 	}
 	
@@ -228,8 +247,8 @@ public class GlossaryFolder implements IParent {
 	
 	public Collection<String> findAbbreviations() {
 		Set<String> terms = new HashSet<>();
-		getAbrev(fDipProject, terms);						
-		Collection<String>  glossTerms = getChildren()
+		getAbrev(dipProject(), terms);						
+		Collection<String>  glossTerms = getFields()
 				.stream()
 				.map(GlossaryField::name)
 				.collect(Collectors.toList());
@@ -267,7 +286,7 @@ public class GlossaryFolder implements IParent {
 		List<String> upperCaseWords = new ArrayList<>();
 		List<String> lowerCaseWords = new ArrayList<>(); 
 		
-		for (GlossaryField field: getChildren()) {
+		for (GlossaryField field: getFields()) {
 			if (field.isUpperCase()) {
 				upperCaseWords.add(field.name());
 			} else {
@@ -420,9 +439,7 @@ public class GlossaryFolder implements IParent {
 	}
 
 	@Override
-	public void setResource(IResource resource) {
-		
-	}
+	public void setResource(IResource resource) {}
 
 	@Override
 	public String id() {
@@ -431,13 +448,16 @@ public class GlossaryFolder implements IParent {
 
 	@Override
 	public IParent parent() {
+		return DdeStorage.instance.get(fDipProject);
+	}
+	
+	@Override
+	public IDdeID parentDdeId() {
 		return fDipProject;
 	}
 
 	@Override
-	public void setParent(IParent parent) {
-		
-	}
+	public void setParent(IParent parent) {}
 
 	@Override
 	public boolean hasParent(IParent parent) {
@@ -446,22 +466,11 @@ public class GlossaryFolder implements IParent {
 
 	@Override
 	public DipProject dipProject() {
-		return fDipProject;
+		return DdeStorage.instance.get(fDipProject);
 	}
 	
-	@Override
-	public List<GlossaryField> getChildren() {
-		return fFields;
-	}
-	
-	@Override
-	public boolean hasChildren() {
-		return !fFields.isEmpty();
-	}
-
-	@Override
-	public GlossaryField getChild(String name) {
-		for (GlossaryField field: getChildren()){
+	public GlossaryField getField(String name) {
+		for (GlossaryField field: getFields()){
 			if (field.isNameEquals(name)) {
 				return field;
 			}
@@ -470,14 +479,25 @@ public class GlossaryFolder implements IParent {
 	}
 
 	@Override
-	public void removeChild(IDipElement child) {
-		
+	public boolean hasChildren() {
+		return !fFields.isEmpty();
 	}
 
 	@Override
-	public void refresh() {
-		
+	public IDdeID getChild(String name) {
+		return null;
 	}
+	
+	@Override
+	public List<IDdeID> getChildren() {
+		throw new UnsupportedOperationException();
+	}
+	
+	@Override
+	public void removeChild(IDdeID child) {}
+
+	@Override
+	public void refresh() {}
 
 	//==================
 	// not used functional IDipParent
@@ -498,9 +518,7 @@ public class GlossaryFolder implements IParent {
 	}
 
 	@Override
-	public void setReadOnly(boolean value) {
-		
-	}
+	public void setReadOnly(boolean value) {}
 	
 	@Override
 	public boolean isIncluded() {
@@ -508,9 +526,7 @@ public class GlossaryFolder implements IParent {
 	}
 	
 	@Override
-	public void setIncluded(boolean value) {
-
-	}
+	public void setIncluded(boolean value) {}
 	
 	@Override
 	public boolean canDelete() {
@@ -524,5 +540,8 @@ public class GlossaryFolder implements IParent {
 
 	@Override
 	public void dispose() {}
+
+
+
 
 }

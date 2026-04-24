@@ -19,10 +19,10 @@ import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.part.EditorActionBarContributor;
 
-import ru.dip.ui.table.ktable.actions.edit.CopyAction;
-import ru.dip.ui.table.ktable.actions.edit.PasteAction;
-import ru.dip.ui.table.ktable.actions.undo.RedoAction;
-import ru.dip.ui.table.ktable.actions.undo.UndoAction;
+import ru.dip.ui.table.actions.edit.CopyAction;
+import ru.dip.ui.table.actions.edit.PasteAction;
+import ru.dip.ui.table.actions.undo.RedoAction;
+import ru.dip.ui.table.actions.undo.UndoAction;
 
 public class DipTableActionContributor extends EditorActionBarContributor {
 

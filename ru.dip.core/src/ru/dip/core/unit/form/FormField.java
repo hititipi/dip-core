@@ -16,20 +16,54 @@ package ru.dip.core.unit.form;
 import java.util.List;
 
 import ru.dip.core.form.model.Field;
+import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.interfaces.IDipUnit;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.TextPresentation;
 
 public class FormField extends AbstractFormField {
 
+	public static FormField instance(IDipUnit unit, Field field) {
+		FormField formField = new FormField(unit, field);
+		
+		// Если брать из хранилища, то нужно будет устновить новый field 
+		/*FormField storageInstance = DdeStorage.instance.get(formField.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
+		}*/		
+		DdeStorage.instance.put(formField.getDdeId(), formField);
+		return formField;
+	}
+		
 	private Field fField;
+	private IDdeID fDde;
 
-	public FormField(IDipUnit unit, Field field) {
+	protected FormField(IDipUnit unit, Field field) {
 		super(unit);
 		fField = field;
 		if (fField != null) {
 			fText = createText();
 		}
 		fFormFields = List.of(this);
+		fDde = DdeID.ofFormField(this);		
+	}
+	
+	@Override
+	public void updateDdeID() {
+		fDde = DdeID.ofFormField(this);	
+		DdeStorage.instance.put(getDdeId(), this);
+	}
+	
+	@Override
+	public IDdeID getDdeId() {
+		return fDde;
+	}
+	
+	@Override
+	public DipElementType type() {
+		return DipElementType.FORM_FIELD;
 	}
 
 	private String createText() {

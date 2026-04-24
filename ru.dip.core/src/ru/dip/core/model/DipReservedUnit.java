@@ -16,21 +16,21 @@ package ru.dip.core.model;
 import org.eclipse.core.resources.IFile;
 
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 
 public class DipReservedUnit extends DipElement {
 	
 	public static final String EXTENSION = "rsvd";
 	
 	public static DipReservedUnit instance(IFile resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.RESERVED_UNIT);
-		if (element == null) {
-			DipReservedUnit dipReserveUnit = new DipReservedUnit(resource, parent);
-			DipRoot.getInstance().putElement(dipReserveUnit);
-			return dipReserveUnit;
-		} else {
-			return (DipReservedUnit) element;
+		DipReservedUnit dipReserveUnit = new DipReservedUnit(resource, parent);
+		DipReservedUnit storageInstance = DdeStorage.instance.get(dipReserveUnit.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
+		
+		DdeStorage.instance.put(dipReserveUnit.getDdeId(), dipReserveUnit);
+		return dipReserveUnit;
 	}
 	
 	private DipReservedUnit(IFile file, IParent parent) {

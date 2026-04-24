@@ -261,7 +261,7 @@ public class PresentationPainter {
 	// FormField
 	
 	public void prepare(int width, AbstractFormField formField, IContentContainer element) {
-		boolean fixed = isFixedContent(element, formField.getDipUnit());	
+		boolean fixed = isFixedContent(element, formField.getDipUnit());
 		// при fixed-mode отображаем только первые 3 поля
 		if (fixed && ((IDipTableElement) element).getNumber() > 2) {
 			contentProvider.setHeight(element, 0); // если поставить ноль, то если этот элемент будет последним, не отрисуется нижняя граница

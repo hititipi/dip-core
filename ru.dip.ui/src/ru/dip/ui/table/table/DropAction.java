@@ -26,9 +26,11 @@ import ru.dip.core.model.DipFolder;
 import ru.dip.core.model.DipReservedFolder;
 import ru.dip.core.model.DipUnit;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.utilities.DipTableUtilities;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.ui.Messages;
 
@@ -118,7 +120,8 @@ public class DropAction {
 	}
 	
 	private int canDropInsideBeginFolder(){
-		int index = fTargetFolder.getDipDocChildrenList().indexOf(fMovedElement);
+		int index = DipTableUtilities.getIndex(fMovedElement) ;
+				//fTargetFolder.getDipDocChildrenList().indexOf(fMovedElement);
 		if (index == 0){
 			return NOT_ALLOWED;
 		} else {
@@ -127,8 +130,10 @@ public class DropAction {
 	}
 	
 	private int canUnitDropInsideFolder(){
-		int oldIndex = fTargetFolder.getDipDocChildrenList().indexOf(fMovedElement);
-		int newIndex = fTargetFolder.getDipDocChildrenList().indexOf(fBeforeTargetElement) + 1;
+		int oldIndex =  DipTableUtilities.getIndex(fMovedElement) ;
+				//fTargetFolder.getDipDocChildrenList().indexOf(fMovedElement);
+		int newIndex =  DipTableUtilities.getIndex(fBeforeTargetElement) + 1 ; 
+				//fTargetFolder.getDipDocChildrenList().indexOf(fBeforeTargetElement) + 1;
 		if (oldIndex == newIndex){
 			return NOT_ALLOWED;
 		} else {
@@ -154,7 +159,7 @@ public class DropAction {
 		}
 		if (fBeforeTargetElement instanceof DipUnit){
 			fTargetFolder = fBeforeTargetElement.parent();
-			List<IDipDocumentElement> fTargetChildren = fTargetFolder.getDipDocChildrenList();
+			List<IDipDocumentElement> fTargetChildren = fTargetFolder.getDdeElements();
 			int oldIndex = fTargetChildren.indexOf(fBeforeTargetElement);
 			if (oldIndex < fTargetChildren.size() - 1){
 				IDipDocumentElement nextElement = fTargetChildren.get(oldIndex + 1); 
@@ -184,7 +189,7 @@ public class DropAction {
 	
 	private int canFolderDropIntoBeginning(){
 		fTargetFolder = fModelProvider.getModel();
-		IDipDocumentElement firstElement = fTargetFolder.getDipDocChildrenList().get(0);
+		IDipDocumentElement firstElement = fTargetFolder.getDdeElements().get(0);
 		if (firstElement instanceof IDipParent){		
 			fOneParent = (fTargetFolder.equals(fMovedElement.parent()));
 			if (fOneParent) {
@@ -205,7 +210,7 @@ public class DropAction {
 			return ALREADY_EXISTS;
 		}		
 		if (contains){
-			IDipElement element = fTargetFolder.getChild(fMovedElement.name());
+			IDipElement element = DdeStorage.instance.get(fTargetFolder.getChild(fMovedElement.name()));
 			if (element instanceof DipReservedFolder){
 				return HAS_RESERVED;
 			}						
@@ -253,27 +258,27 @@ public class DropAction {
 	}
 	
 	private void dropUnitInsideFolder(){
-		fTargetFolder.removeChild(fMovedElement);
+		fTargetFolder.removeChild(fMovedElement.getDdeId());
 		int index = getNewUnitIndex();
 		fTargetFolder.addNewChild(fMovedElement, index);
 	}
 	
 	private int getNewUnitIndex(){
 		if (fBeforeTargetElement instanceof DipUnit){
-			return fTargetFolder.getDipDocChildrenList().indexOf(fBeforeTargetElement) + 1;
+			return fTargetFolder.getDdeElements().indexOf(fBeforeTargetElement) + 1;
 		}
 		return 0;
 	}
 	
 	private void dropFolderInsideFolder(){
-		fTargetFolder.removeChild(fMovedElement);
+		fTargetFolder.removeChild(fMovedElement.getDdeId());
 		int index = getNewFolderIndex();
 		fTargetFolder.addNewChild(fMovedElement, index);
 	}
 
 	private int getNewFolderIndex(){
 		if (fBeforeTargetElement instanceof DipUnit || fBeforeTargetElement instanceof IDipParent){
-			return fTargetFolder.getDipDocChildrenList().indexOf(fBeforeTargetElement) + 1;
+			return fTargetFolder.getDdeElements().indexOf(fBeforeTargetElement) + 1;
 		}
 		return 0;
 	}
@@ -284,7 +289,7 @@ public class DropAction {
 		}
 		DipUtilities.copyElement(fTargetFolder, fMovedElement, fShell);
 		DipUtilities.deleteElement(fMovedElement, fNeedReserved, fShell);	
-		LinkInteractor.instance().updateLinks(fMovedElement, fTargetFolder.getChild(fMovedElement.name()));
+		LinkInteractor.instance().updateLinks(fMovedElement, DdeStorage.instance.get(fTargetFolder.getChild(fMovedElement.name())));
 	}
 	
 	//=====================

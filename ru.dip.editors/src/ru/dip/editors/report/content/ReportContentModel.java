@@ -108,7 +108,7 @@ public class ReportContentModel implements KTableModel, IDipTableModel {
 			RceEntryElement entryElement = new RceEntryElement(this, reportPresentation);			
 			fElements.add(entryElement);		
 			try {
-				entryElement.computeChildren();
+				entryElement.computeReportChildren();
 				fElements.addAll(entryElement.children());
 			} catch (ReportRuleSyntaxException e) {
 				// добавить ошибочный элемент
@@ -391,7 +391,7 @@ public class ReportContentModel implements KTableModel, IDipTableModel {
 			paralles.add(element);
 			
 		}
-		paralles.parallelStream()
+		paralles.stream()
 			.forEach(ReportContentModel.this::preparePresentation);
 		notParallel.stream()
 			.forEach(ReportContentModel.this::preparePresentation);
@@ -405,6 +405,7 @@ public class ReportContentModel implements KTableModel, IDipTableModel {
 	}
 	
 	private void preparePresentation(IDipTableElement element) {
+		System.out.println("prepare presentation: " + element);
 		int indent = 0;
 		if (fPresentationColumnNumber == 0 && !fTableComposite.getTableSettings().isOneListMode()) {
 			indent = getIndent(element) * 16;

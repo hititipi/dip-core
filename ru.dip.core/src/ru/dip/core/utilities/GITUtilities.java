@@ -291,6 +291,20 @@ public class GITUtilities {
 		}
 		return null;
 	}
+		
+	public static String getCurrentProjectHash(DipProject dipProject) {
+		Repository repository = dipProject.getGitRepo();
+		if (repository == null) {
+			return null;
+		}		
+		try {
+			return getCurrentHash(repository.getDirectory().toString());
+		} catch (IOException | GitAPIException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	
 	/**
 	 * Возвращает все коммиты репозитория

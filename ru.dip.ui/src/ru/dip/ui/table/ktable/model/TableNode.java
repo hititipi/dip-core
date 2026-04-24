@@ -74,10 +74,10 @@ public class TableNode extends TableElement implements ITableNode {
 	/**
 	 * Создает список детей
 	 */
-	public void computeChildren() {
+	public void computeChildren() {		
 		fChildren = new ArrayList<>();
 		IDipParent dipDocElement = dipDocElement();
-		Object[] reqChildren = dipDocElement.getDipChildren();
+		Object[] reqChildren = dipDocElement.getDipChildren();		
 		for (Object reqChild: reqChildren) {
 			if (reqChild instanceof IDipParent) {
 				TableNode node = new TableNode(fModel, (IDipParent) reqChild, this);
@@ -89,7 +89,7 @@ public class TableNode extends TableElement implements ITableNode {
 				TableElement unitElement = new TableElement((IDipDocumentElement) reqChild, this);
 				fChildren.add(unitElement);
 			}
-		}
+		}	
 		applyFormSettings();
 	}
 	
@@ -131,7 +131,7 @@ public class TableNode extends TableElement implements ITableNode {
 				if (currentFields.size() == 1) {
 					joinChildren.add(currentElement);
 				} else if (!currentFields.isEmpty()) {
-					FieldUnity fieldUnity = new FieldUnity(currentUnit, currentFields);
+					FieldUnity fieldUnity = FieldUnity.instance(currentUnit, currentFields);
 					
 				//	вставляем лямбду для создания  new TableElement
 				//	BiFunction<FieldUnity, TableNode>
@@ -189,7 +189,7 @@ public class TableNode extends TableElement implements ITableNode {
 	/*
 	 * Нужно переделать вместе с allChildren(conditions) 
 	 */
-	public List<IDipTableElement> allChildren(){
+	public List<IDipTableElement> allChildren(){		
 		// если включе фильтр
 		Condition condition = fModel.getCondition();
 		if (condition != null) {

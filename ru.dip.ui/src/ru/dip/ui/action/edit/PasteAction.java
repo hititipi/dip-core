@@ -398,7 +398,7 @@ public class PasteAction extends SelectionListenerAction {
 		List<GlossaryField> fAddField = new ArrayList<>();
 		List<GlossaryField> fChangeField = new ArrayList<>();
 		for(GlossaryField field: fGlossaryBuffer.getFields()){
-			GlossaryField containedField = fGlossaryFolder.getChild(field.name());
+			GlossaryField containedField = fGlossaryFolder.getField(field.name());
 			if (containedField != null){
 				if (forAll ==  -1){
 					ChangeFieldDialog dialog = new ChangeFieldDialog(fShell, field.name());			
@@ -533,7 +533,7 @@ public class PasteAction extends SelectionListenerAction {
 		List<Variable> fAddField = new ArrayList<>();
 		List<Variable> fChangeField = new ArrayList<>();
 		for (Variable field : fVariableBuffer.getVariables()) {
-			Variable containedField = fVarContainer.getChild(field.name());
+			Variable containedField = fVarContainer.getVariable(field.name());
 			if (containedField != null) {
 				if (forAll == -1) {
 					ChangeVariableDialog dialog = new ChangeVariableDialog(fShell, field.name());

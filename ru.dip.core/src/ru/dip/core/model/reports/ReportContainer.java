@@ -23,19 +23,24 @@ import org.eclipse.core.runtime.CoreException;
 
 import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
+import ru.dip.core.storage.ReportFolderDdeID;
 
 public class ReportContainer implements IReportContainer {
 	
 	public static final String REPORT_FOLDER_NAME = "Reports";
 	
-	private IDipParent fDipParent;
-	private List<Report> fReports = new ArrayList<>();
+	private IDdeID fDipParent;
+	private List<IDdeID> fReports = new ArrayList<>();
+	
+	private IDdeID fDdeID;
 	
 	public ReportContainer(IDipParent parent) {
-		fDipParent = parent;
+		fDipParent = parent.getDdeId();
+		fDdeID = new ReportFolderDdeID(parent.resource());
 	}
 	
 	@Override
@@ -45,7 +50,7 @@ public class ReportContainer implements IReportContainer {
 	
 	@Override
 	public String getRelativePath() {
-		return  fDipParent.resource().getProjectRelativePath().toOSString();		
+		return  getDipParent().resource().getProjectRelativePath().toOSString();		
 	}
 	
 	@Override
@@ -55,22 +60,27 @@ public class ReportContainer implements IReportContainer {
 
 	@Override
 	public IDipParent getDipParent() {
-		return fDipParent;
+		return DdeStorage.instance.get(fDipParent);
 	}
 	
 	@Override
 	public IParent parent() {
+		return getDipParent();
+	}
+	
+	@Override
+	public IDdeID parentDdeId() {
 		return fDipParent;
 	}
 	
 	@Override
 	public IContainer resource() {		
-		return fDipParent.resource();
+		return getDipParent().resource();
 	}
 
 	@Override
 	public DipProject dipProject() {
-		return fDipParent.dipProject();
+		return getDipParent().dipProject();
 	}
 	
 	//=========================
@@ -79,11 +89,11 @@ public class ReportContainer implements IReportContainer {
 	protected void computeChildren() {
 		fReports.clear();
 		try {
-			for (IResource resource: fDipParent.resource().members()){
+			for (IResource resource: getDipParent().resource().members()){
 				if (resource instanceof IFile){
 					String extension = ((IFile) resource).getFileExtension();
 					if (Report.REPORT_EXTENSION.equals(extension)){
-						Report report = Report.instance(resource, this);
+						IDdeID report = Report.instance(resource, this).getDdeId();
 						fReports.add(report);
 					}
 				}
@@ -94,21 +104,21 @@ public class ReportContainer implements IReportContainer {
 	}
 	
 	@Override
-	public List<? extends IDipElement> getChildren() {
+	public List<IDdeID> getChildren() {
 		return fReports;
 	}
 
 	@Override
 	public Report loadReport(IFile file) {
 		Report report = Report.instance(file, this);
-		fReports.add(report);
+		fReports.add(report.getDdeId());
 		return report;
 	}
 	
 	
 	@Override
 	public void addReportChild(IFile resource) {
-		Report report = Report.instance(resource, this); 
+		IDdeID report = Report.instance(resource, this).getDdeId(); 
 		fReports.add(report);
 	}
 
@@ -118,9 +128,9 @@ public class ReportContainer implements IReportContainer {
 	}
 
 	@Override
-	public IDipElement getChild(String name) {
-		for (Report report: fReports) {
-			if (name.equals(report.name())) {
+	public IDdeID getChild(String name) {
+		for (IDdeID report: fReports) {
+			if (name.equals(report.getName())) {
 				return report;
 			}
 		}
@@ -128,12 +138,12 @@ public class ReportContainer implements IReportContainer {
 	}
 
 	@Override
-	public void removeChild(IDipElement child) {
+	public void removeChild(IDdeID child) {
 		fReports.remove(child);
 	}
 	
 	@Override
-	public List<Report> getReports() {
+	public List<IDdeID> getReports() {
 		return fReports;
 	}
 	
@@ -142,12 +152,12 @@ public class ReportContainer implements IReportContainer {
 	
 	@Override
 	public boolean canDelete() {
-		return !fDipParent.isReadOnly();
+		return !getDipParent().isReadOnly();
 	}
 
 	@Override
 	public boolean canRename() {
-		return fDipParent.canDelete();
+		return getDipParent().canDelete();
 	}
 
 	@Override
@@ -157,12 +167,12 @@ public class ReportContainer implements IReportContainer {
 
 	@Override
 	public boolean isReadOnly() {
-		return fDipParent.isReadOnly();
+		return getDipParent().isReadOnly();
 	}
 
 	@Override
 	public boolean isIncluded() {
-		return fDipParent.isIncluded();
+		return getDipParent().isIncluded();
 	}
 
 	//================
@@ -198,5 +208,10 @@ public class ReportContainer implements IReportContainer {
 
 	@Override
 	public void dispose() {		
+	}
+
+	@Override
+	public IDdeID getDdeId() {
+		return fDdeID;
 	}
 }

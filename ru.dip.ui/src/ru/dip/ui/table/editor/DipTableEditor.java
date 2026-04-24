@@ -19,16 +19,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Objects;
 
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.ControlListener;
@@ -65,10 +68,12 @@ import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipEditor;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IFindSupport;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.table.TableWriter;
 import ru.dip.core.unit.UnitPresentationCache;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.FileUtilities;
+import ru.dip.core.utilities.GITUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 import ru.dip.core.utilities.ui.swt.ColorProvider;
@@ -178,17 +183,19 @@ public class DipTableEditor extends EditorPart implements IResourceChangeListene
 			IContainer container = tableInput.getContainer();
 			IDipElement element = DipUtilities.findElement(container);
 			if (element instanceof DipTableContainer){
-				DipTableContainer tableContainer = (DipTableContainer) element;
+				DipTableContainer tableContainer = (DipTableContainer) element;				
+				tableContainer.computeChildren();
+				tableContainer.dipProject().updateNumeration();
 				kTable().setDiffMode(false);
 				kTable().setOnlyDiffMode(false);
 				kTable().setDinamicallyDiffMode(false);
-				updater().updateNumeration();
 				setNewModel(new TableModel(tableContainer));
+				kTable().updateBackgrouColor();
 			}	
 		}
 	}
 	
-	public void setNewModel(TableModel model){
+	public void setNewModel(TableModel model){		
 		fTableModel = model;
 		fContainer = model.resource();
 		fKTableComposite.setTableModel(model);
@@ -366,12 +373,20 @@ public class DipTableEditor extends EditorPart implements IResourceChangeListene
 		fFullUpdatingNow = value;
 	}
 	
+	@Override
 	public void fullUpdate() {
-		fButtonManger.updateFilter();
-		fButtonManger.setDiffModeSelection(false);
-		kTable().resourceUpdate();
+		fKTableComposite.selector().deselect();
+		if (fContainer instanceof IProject) {
+			DdeStorage.instance.clearContainer(fTableModel.getDdeId());
+		}
+		UnitPresentationCache.clearForContainer(fContainer);
+		ResourcesUtilities.updateRoot();
 		udpateModelFromInput();
+		fButtonManger.updateFilter();
+		fButtonManger.setDiffModeSelection(false);		
 		updateDipToc();
+		ResourcesUtilities.updateRoot();
+		WorkbenchUtitlities.updateProjectExplorer();
 	}
 	
 	@Override
@@ -383,17 +398,14 @@ public class DipTableEditor extends EditorPart implements IResourceChangeListene
 		if (file != null && !file.getName().equals(DnfoTable.TABLE_FILE_NAME)) {
 			updater().updateFilePresentation(file);
 			return;
-		}
-		
+		}	
 		if (fContainer != null && event.getDelta() != null){
 			if (event.getDelta().findMember(fContainer.getFullPath()) != null){
 				setModelChanged();
 			}
 		}
 	}
-	
 
-	
 	private IFile getModifitedFile(IResourceDelta delta) {
 		if (delta.getKind() == IResourceDelta.CHANGED) {
 			if (delta.getResource() instanceof IFile) {
@@ -419,6 +431,17 @@ public class DipTableEditor extends EditorPart implements IResourceChangeListene
 		}
 		fKTableComposite.setFocus();
 		checkRenameInput();
+		
+		// полный update если изменился hash
+		Repository repository = fTableModel.dipProject().getGitRepo();
+		if (repository != null) {
+			String newHash = GITUtilities.getCurrentProjectHash(fTableModel.dipProject());
+			if (!Objects.equals(newHash, fTableModel.getHash())) {
+				fullUpdate();
+				return;
+			}
+		}
+		
 		fKTableComposite.setViewModeProperties();
 		if (fKTableComposite.isDinamicallyDiffMode()) {
 			updater().additionalModelUpdate(fTableModel);
@@ -426,6 +449,7 @@ public class DipTableEditor extends EditorPart implements IResourceChangeListene
 		
 		if (fTableModel != null && fModelChanged){
 			updateEditor();
+			fModelChanged = false;
 		} else {
 			fKTableComposite.refreshTable();
 		}
@@ -658,7 +682,7 @@ public class DipTableEditor extends EditorPart implements IResourceChangeListene
 		return fButtonManger;
 	}
 	
-	public DipProject getDipProject(){
+	public DipProject getDipProject(){	
 		return fTableModel.dipProject();
 	}
 	
@@ -674,6 +698,16 @@ public class DipTableEditor extends EditorPart implements IResourceChangeListene
 	@Override
 	public DipProject dipProject() {
 		return getDipProject();
+	}
+
+	/**
+	 * Если был обновлен проект (родитель)
+	 */
+	public void checkInput() {
+		IDipElement element = DdeStorage.instance.get(fTableModel.getDdeId());
+		if (element == null) {
+			fullUpdate();
+		}	
 	}
 
 }

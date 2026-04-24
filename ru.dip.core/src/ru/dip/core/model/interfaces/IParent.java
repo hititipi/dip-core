@@ -15,15 +15,17 @@ package ru.dip.core.model.interfaces;
 
 import java.util.List;
 
+import ru.dip.core.storage.IDdeID;
+
 public interface IParent extends IDipElement {
 	
-	List<? extends IDipElement> getChildren();
+	List<IDdeID> getChildren();
 	
 	boolean hasChildren();
 
-	IDipElement getChild(String name);
+	IDdeID getChild(String name);
 	
-	void removeChild(IDipElement child);
+	void removeChild(IDdeID child);
 	
 	void refresh();
 

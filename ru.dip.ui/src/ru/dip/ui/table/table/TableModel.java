@@ -33,6 +33,9 @@ import ru.dip.core.model.DipTableContainer;
 import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.reports.IReportContainer;
 import ru.dip.core.model.vars.IVarContainer;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
+import ru.dip.core.utilities.GITUtilities;
 import ru.dip.ui.table.ktable.model.ITableInputModel;
 import ru.dip.core.model.interfaces.IDipComment;
 import ru.dip.core.model.interfaces.IDipElement;
@@ -45,12 +48,17 @@ import ru.dip.core.model.interfaces.IDipDocumentElement;
  */
 public class TableModel implements IDipParent, ITableInputModel {
 	
-	private DipTableContainer fDipContainer;
-	private List<IDipParent> fParents;
+	private final IDdeID fDipContainer;
+	private List<IDdeID> fParents;	
+	private String fHash;
 	
 	public TableModel(DipTableContainer dipTableContainer) {
-		fDipContainer = dipTableContainer;
-		setParents(fDipContainer);
+		if (dipTableContainer.getDdeId() == null) {
+			throw new RuntimeException();
+		}
+		fHash = GITUtilities.getCurrentProjectHash(dipTableContainer.dipProject());		
+		fDipContainer = dipTableContainer.getDdeId();
+		setParents(dipTableContainer);
 	}
 	
 	//===========================
@@ -69,36 +77,45 @@ public class TableModel implements IDipParent, ITableInputModel {
 	
 	//=================================
 	
-	public IDipParent getContainer(){
-		return fDipContainer;
+	public DipTableContainer getContainer(){		
+		return DdeStorage.instance.get(fDipContainer);
 	}
+	
+	public String getHash() {
+		return fHash;
+	}
+	
 	
 	private void setParents(IDipParent parent){
 		fParents = new ArrayList<>();
-		fParents.add(parent);
+		if (parent == null) {
+			throw new RuntimeException();
+		}
+		
+		fParents.add(parent.getDdeId());
 		while (parent.type() != DipElementType.RPOJECT){
 			parent = parent.parent();
-			fParents.add(0, parent);			
+			fParents.add(0, parent.getDdeId());			
 		}
 	}
 	
 	public List<IDipParent> getParentsList(){
-		return fParents;
+		return DdeStorage.instance.getObjList(fParents);
 	}
 	
 	/**
 	 * Для Section (является ли объект одним из заголовоков-родителей)
 	 */
 	public boolean isParentHeader(IDipElement element){
-		return fParents.contains(element);
+		return fParents.contains(element.getDdeId());
 	}
 	
 	public boolean isTable(IDipElement element){
-		return fDipContainer.equals(element);
+		return getContainer().equals(element);
 	}
 	
-	public boolean isChild(IDipElement element){
-		return element.hasParent(fDipContainer);
+	public boolean isChild(IDipElement element){		
+		return element.hasParent(getContainer());
 	}
 	
 	//============================
@@ -107,32 +124,38 @@ public class TableModel implements IDipParent, ITableInputModel {
 
 	@Override
 	public String name() {
-		return fDipContainer.name();
+		return getContainer().name();
 	}
 
 	@Override
 	public DipElementType type() {
-		return fDipContainer.type();
+		return getContainer().type();
 	}
 
 	@Override
 	public IContainer resource() {
-		return fDipContainer.resource();
+		return getContainer().resource();
 	}
 	
 	@Override
 	public String id() {
-		return fDipContainer.id();
+		return getContainer().id();
 	}
 
 	@Override
 	public IDipParent parent() {
-		return fDipContainer.parent();
+		return getContainer().parent();
+	}
+	
+	@Override
+	public IDdeID parentDdeId() {
+		// TODO Auto-generated method stub
+		return  getContainer().parentDdeId();
 	}
 
 	@Override
 	public boolean isRoot() {		
-		return fDipContainer.isRoot();
+		return getContainer().isRoot();
 	}
 	
 	@Override
@@ -147,12 +170,12 @@ public class TableModel implements IDipParent, ITableInputModel {
 
 	@Override
 	public String description() {
-		return fDipContainer.description();
+		return getContainer().description();
 	}
 
 	@Override
 	public void setDescription(String description) {
-		fDipContainer.setDescription(description);
+		getContainer().setDescription(description);
 	}
 
 	@Override
@@ -161,324 +184,335 @@ public class TableModel implements IDipParent, ITableInputModel {
 	}
 
 	@Override
-	public List<IDipElement> getChildren() {
-		return fDipContainer.getChildren();
+	public List<IDdeID> getChildren() {
+		return getContainer().getChildren();
 	}
 
 	@Override
 	public boolean hasChildren() {
-		return fDipContainer.hasChildren();
+		return getContainer().hasChildren();
 	}
 
 	@Override
-	public IDipElement getChild(String name) {
-		return fDipContainer.getChild(name);
+	public IDdeID getChild(String name) {
+		return getContainer().getChild(name);
 	}
 
-	@Override
-	public void removeChild(IDipElement child) {
-		fDipContainer.removeChild(child);
-	}
-
+	
 	@Override
 	public IDipElement createUnit(IFile file) {
-		return fDipContainer.createUnit(file);
+		return getContainer().createUnit(file);
 	}
 
 	@Override
 	public IDipElement createFolder(IFolder folder) {
-		return fDipContainer.createFolder(folder);
+		return getContainer().createFolder(folder);
 	}
 
 	@Override
 	public IDipElement createReservedFolder(IFolder folder) {
-		return fDipContainer.createFolder(folder);
+		return getContainer().createFolder(folder);
 	}
 
 	@Override
 	public IDipElement createReservedUnit(IFile file) {
-		return fDipContainer.createReservedUnit(file);
+		return getContainer().createReservedUnit(file);
 	}
 
 	@Override
-	public List<IDipDocumentElement> getDipDocChildrenList() {
-		return fDipContainer.getDipDocChildrenList();
+	public List<IDipDocumentElement> getDdeElements() {
+		return getContainer().getDdeElements();
+	}
+	
+	@Override
+	public List<IDdeID> getDDEChildren() {
+		return getContainer().getDDEChildren();
 	}
 
 	@Override
 	public IDipDocumentElement[] getOneListChildren() {
-		return fDipContainer.getOneListChildren();
+		return getContainer().getOneListChildren();
 	}
 	
 	@Override
 	public IDipDocumentElement[] getDipChildren() {		
-		return fDipContainer.getDipChildren();
+		return getContainer().getDipChildren();
 	}
 
 	@Override
 	public DipProject dipProject() {
-		return fDipContainer.dipProject();
+		return getContainer().dipProject();
 	}
 
 	@Override
 	public IDipElement createNewUnit(IFile file) {
-		return fDipContainer.createNewUnit(file);
+		return getContainer().createNewUnit(file);
 	}
 
 	@Override
 	public IDipDocumentElement createNewUnit(IFile file, int reqIndex) {
-		return fDipContainer.createNewUnit(file, reqIndex);
+		return getContainer().createNewUnit(file, reqIndex);
 	}
 
 	@Override
 	public IDipParent createNewFolder(IFolder folder) {
-		return fDipContainer.createNewFolder(folder);
+		return getContainer().createNewFolder(folder);
 	}
 
 	@Override
 	public IDipParent createNewFolder(IFolder folder, int dipIndex) {
-		return fDipContainer.createNewFolder(folder, dipIndex);
+		return getContainer().createNewFolder(folder, dipIndex);
 	}
 
 	@Override
 	public void setResource(IResource resource) {
-		fDipContainer.setResource(resource);
+		getContainer().setResource(resource);
 	}
 
 	@Override
 	public void addNewChild(IDipDocumentElement dipDocElement, int dipIndex) {
-		fDipContainer.addNewChild(dipDocElement, dipIndex);		
+		getContainer().addNewChild(dipDocElement, dipIndex);		
 	}
 
 	@Override
 	public String getLocalNumber() {
-		return fDipContainer.getLocalNumber();
+		return getContainer().getLocalNumber();
 	}
 
 	@Override
 	public boolean isActiveNumeration() {
-		return fDipContainer.isActiveNumeration();
+		return getContainer().isActiveNumeration();
 	}
 
 	@Override
 	public void setActiveNumeration(boolean active) {
-		fDipContainer.setActiveNumeration(active);		
+		getContainer().setActiveNumeration(active);		
 	}
 
 	@Override
 	public String getParentNumber() {
-		return fDipContainer.getParentNumber();
+		return getContainer().getParentNumber();
 	}
 
 	@Override
 	public String number() {
-		return fDipContainer.number();
+		return getContainer().number();
 	}
 
 	@Override
 	public void refresh() {
-		fDipContainer.refresh();
+		getContainer().refresh();
 	}
 
 	@Override
 	public IDipComment comment() {
-		return fDipContainer.comment();
+		return getContainer().comment();
 	}
 	
 	@Override
 	public String getCommentContent() {
-		return fDipContainer.getCommentContent();
+		return getContainer().getCommentContent();
 	}
 
 	@Override
 	public void setDipComment(IDipComment comment) {
-		fDipContainer.setDipComment(comment);
+		getContainer().setDipComment(comment);
 	}
 
 	@Override
 	public DipDescription dipDescription() {
-		return fDipContainer.dipDescription();
+		return getContainer().dipDescription();
 	}
 
 	@Override
 	public void setDipDescription(DipDescription description) {
-		fDipContainer.setDipDescription(description);
+		getContainer().setDipDescription(description);
 	}
 
 	@Override
 	public void removeDescription() {
-		fDipContainer.removeDescription();
+		getContainer().removeDescription();
 	}
 
 	@Override
 	public void updateDescription(String newDescriptionContent) {
-		fDipContainer.updateDescription(newDescriptionContent);	
+		getContainer().updateDescription(newDescriptionContent);	
 	}
 
 	@Override
 	public void updateDipComment(String newCommentContent) {
-		fDipContainer.updateDipComment(newCommentContent);
+		getContainer().updateDipComment(newCommentContent);
 	}
 
 	@Override
 	public void deleteDipComment() {
-		fDipContainer.deleteDipComment();		
+		getContainer().deleteDipComment();		
 	}
 
 	@Override
 	public boolean isFileNumeration() {		
-		return fDipContainer.isFileNumeration();
+		return getContainer().isFileNumeration();
 	}
 
 	@Override
 	public boolean isFolderNumeration() {
-		return fDipContainer.isFolderNumeration();
+		return getContainer().isFolderNumeration();
 	}
 
 	@Override
 	public void setFileStep(String step) {
-		fDipContainer.setFileStep(step);		
+		getContainer().setFileStep(step);		
 	}
 
 	@Override
 	public String getFileStep() {
-		return fDipContainer.getFileStep();
+		return getContainer().getFileStep();
 	}
 
 	@Override
 	public String getFolderStep() {
-		return fDipContainer.getFolderStep();
+		return getContainer().getFolderStep();
 	}
 
 	@Override
 	public void setFolderStep(String step) {
-		fDipContainer.setFolderStep(step);
+		getContainer().setFolderStep(step);
 	}
 
 	@Override
 	public void updateWithProject() {
-		fDipContainer.updateWithProject();
+		getContainer().updateWithProject();
 	}
 
 	@Override
 	public String getNumberDescrition(boolean showNumeration) {
-		return fDipContainer.getNumberDescrition(showNumeration);
+		return getContainer().getNumberDescrition(showNumeration);
 	}
 
 	@Override
 	public IDipParent includeFolder(IFolder folder, String name, String description, boolean readOnly) {
-		return fDipContainer.includeFolder(folder, name, description, readOnly);
+		return getContainer().includeFolder(folder, name, description, readOnly);
 	}
 
 	@Override
 	public IDipParent includeFolder(IFolder folder, int dipIndex, String name, String description, boolean readOnly) {
-		return fDipContainer.includeFolder(folder, dipIndex, name, description, readOnly);
+		return getContainer().includeFolder(folder, dipIndex, name, description, readOnly);
 	}
 
 	@Override
 	public boolean isReadOnly() {
-		return fDipContainer.isReadOnly();
+		return getContainer().isReadOnly();
 	}
 
 	@Override
 	public void setReadOnly(boolean value) {
-		fDipContainer.setReadOnly(value);
+		getContainer().setReadOnly(value);
 	}
 
 	@Override
 	public boolean isIncluded() {
-		return fDipContainer.isIncluded();
+		return getContainer().isIncluded();
 	}
 	
 	@Override
 	public void setIncluded(boolean value) {
-		fDipContainer.setIncluded(value);
+		getContainer().setIncluded(value);
 	}
 
 	@Override
 	public boolean canDelete() {
-		return fDipContainer.canDelete();
+		return getContainer().canDelete();
 	}
 
 	@Override
 	public boolean canRename() {
-		return fDipContainer.canRename();
+		return getContainer().canRename();
 	}
 
 	@Override
 	public String getPageBreak() {
-		return fDipContainer.getPageBreak();
+		return getContainer().getPageBreak();
 	}
 
 	@Override
 	public void setPageBreak(String value) {
-		fDipContainer.setPageBreak(value);
+		getContainer().setPageBreak(value);
 	}
 
 	@Override
 	public boolean isDisabled() {
-		return fDipContainer.isDisabled();
+		return getContainer().isDisabled();
 	}
 
 	@Override
 	public void setDisabled(boolean value) {
-		fDipContainer.setDisabled(value);
+		getContainer().setDisabled(value);
 	}
 
 	@Override
 	public boolean isDisabledInDocument() {
-		return fDipContainer.isDisabledInDocument();
+		return getContainer().isDisabledInDocument();
 	}
 
 	@Override
 	public void sort() throws ParserConfigurationException, IOException {
-		fDipContainer.sort();		
+		getContainer().sort();		
 	}
 
 	@Override
 	public IDipElement createReservedMarker(IFile file) {
-		return fDipContainer.createReservedMarker(file);
+		return getContainer().createReservedMarker(file);
 	}
 
 	@Override
 	public IDipDocumentElement strong() {
-		return fDipContainer.strong();
+		return getContainer().strong();
 	}
 
 	@Override
 	public boolean hasFindResult() {
-		return fDipContainer.hasFindResult();
+		return getContainer().hasFindResult();
 	}
 
 	@Override
 	public List<Point> getFindedPoints() {
-		return fDipContainer.getFindedIdPoints();
+		return getContainer().getFindedIdPoints();
 	}
 
 	@Override
 	public void updateFindedPoints(String newContent) {
-		fDipContainer.updateFindedPoints(newContent);
+		getContainer().updateFindedPoints(newContent);
 	}
 
 	@Override
 	public IVarContainer getVariablesContainer() {
-		return fDipContainer.getVariablesContainer();
+		return getContainer().getVariablesContainer();
 	}
 
 	@Override
 	public void deleteVarContainer() {
-		fDipContainer.deleteVarContainer();
+		getContainer().deleteVarContainer();
 	}
 
 	@Override
 	public IReportContainer getReportContainer() {
-		return fDipContainer.getReportContainer();
+		return getContainer().getReportContainer();
 	}
 
 	@Override
 	public void dispose() {
-		fDipContainer = null;
+		//fDipContainer = null;
 		fParents.clear();
+	}
+
+	@Override
+	public IDdeID getDdeId() {
+		return fDipContainer;
+	}
+
+	@Override
+	public void removeChild(IDdeID child) {
+		getContainer().removeChild(child);
 	}
 
 }

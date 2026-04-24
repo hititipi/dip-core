@@ -24,10 +24,10 @@ import org.eclipse.ui.IMemento;
 
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
-import ru.dip.core.model.DnfoTable;
 import ru.dip.core.model.DipTableContainer;
+import ru.dip.core.model.DnfoTable;
 import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 
@@ -42,8 +42,8 @@ public class TableEditorFactory implements IElementFactory {
 		IContainer container = getContainer(memento);
 		if (container != null){
 			if (DipNatureManager.hasNature(container)){
-				DipProject project = DipRoot.getInstance().getDipProject(container.getProject());
-				IDipElement element = DipUtilities.findDipElementInProject(container, project);
+				DipProject dipProject = DdeStorage.instance.getOrCreate(container.getProject());
+				IDipElement element = DipUtilities.findDipElementInProject(container, dipProject);
 				if (element instanceof DipTableContainer) {								
 					DnfoTable table = ((DipTableContainer) element).getTable();
 					if (table == null) {

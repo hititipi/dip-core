@@ -46,12 +46,14 @@ public class GlossaryTableModel implements KTableModel {
 		fTable = table;
 		fGlossaryFolder = glossFolder;
 		fGlossaryComposite = glossComposite;
-		fGlossaryElements = fGlossaryFolder.getChildren().stream().map(GlossaryEntry::new).collect(Collectors.toList());		
+		fGlossaryElements = 
+				fGlossaryFolder.getFields()
+				.stream().map(GlossaryEntry::new).collect(Collectors.toList());		
 		update();
 	}
 	
 	public void fullUpdate() {
-		fGlossaryElements = fGlossaryFolder.getChildren().stream()
+		fGlossaryElements = fGlossaryFolder.getFields().stream()
 				.filter(fGlossaryComposite::checkFieldByFilter)
 				.map(GlossaryEntry::new).collect(Collectors.toList());
 		update();

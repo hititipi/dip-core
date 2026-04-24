@@ -35,28 +35,30 @@ import ru.dip.core.model.vars.FolderVarContainer;
 import ru.dip.core.model.vars.IVarContainer;
 import ru.dip.core.model.vars.ProjectVarContainer;
 import ru.dip.core.model.vars.VarContainer;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 
 public class DipFolder extends DipTableContainer implements IDipParent {
 	
 	public static DipFolder instance(IFolder container, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(container, parent, DipElementType.FOLDER);
-		if (element == null) {
-			DipFolder folder = null;
-			if (Appendix.isAppendix(parent, container.getName())) {
-				folder = new Appendix(container, parent);
-			} else {
-				folder = new DipFolder(container, parent);
-			}
-			DipRoot.getInstance().putElement(folder);
-			return folder;
+		DipFolder folder = null;
+		if (Appendix.isAppendix(parent, container.getName())) {
+			folder = new Appendix(container, parent);
 		} else {
-			return (DipFolder) element;
+			folder = new DipFolder(container, parent);
 		}
+		
+		DipFolder storageFolder = DdeStorage.instance.get(folder.getDdeId());
+		if (storageFolder != null) {
+			return storageFolder;
+		}
+		DdeStorage.instance.put(folder.getDdeId(), folder);
+		return folder;		
 	}
 	
-	private GlossaryFolder fGlossFolder;
+	private IDdeID fGlossFolder;
 	private FolderVarContainer fVarContainer;
-	protected FolderReportContainer fReportContainer;
+	protected IDdeID fReportContainer;
 	
 	protected DipFolder(IFolder container, IParent parent) {
 		super(container, parent);
@@ -66,12 +68,7 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	// children
 	
 	@Override
-	public IDipElement getChild(String name) {		
-		return super.getChild(name);
-	}
-	
-	@Override
-	public void computeChildren(){
+	public void computeChildren(){				
 		fChildren = new ArrayList<>();
 		if (resource() == null) {
 			return;
@@ -92,7 +89,9 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 		}
 		if (fReportContainer != null) {
 			IMainReportContainer mainReportFolder = dipProject().getOrCreateReportContainer();
-			mainReportFolder.removeContainer(fReportContainer.getOriginalReportContainer());
+			
+			FolderReportContainer folderContainer = (FolderReportContainer) getReportContainer();
+			mainReportFolder.removeContainer(folderContainer.getOriginalReportContainer());
 			fReportContainer = null;
 		}
 		setDipDocElementsChildren(new ArrayList<>());
@@ -101,7 +100,7 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	private void createChildrenElements() {
 		try {
 			for (IResource resource: resource().members()){
-				DipElementType type = DipRoot.getType(resource);
+				DipElementType type = DipElementType.getType(resource);
 				switch (type){
 				case RESERVED_FOLDER:{
 					createReservedFolder((IFolder) resource);
@@ -192,15 +191,15 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	protected void createReportFolder(IFolder folder) {}
 	
 	@Override
-	protected void checkUpdate(List<IDipDocumentElement> dipChildren) {
+	protected void checkUpdate(List<IDdeID> dipChildren) {
 		if (fNeedUpdate) {
 			updateFolderChildren(dipChildren);
 			fNeedUpdate = false;
 		}
 	}
 	
-	private void updateFolderChildren(List<IDipDocumentElement> dipChildren) {
-		for (IDipDocumentElement dipDocumentElement: dipChildren) {
+	private void updateFolderChildren(List<IDdeID> dipChildren) {
+		for (IDdeID dipDocumentElement: dipChildren) {
 			if (dipDocumentElement instanceof DipTableContainer) {							
 				((DipTableContainer) dipDocumentElement).computeChildren();
 			}			
@@ -250,20 +249,14 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	/**
 	 *  Включая те директории, которых нет в .dnfo
 	 */
-	private void updateAllChildren(List<IDipDocumentElement> dipChildren) {
-		for (IDipDocumentElement dipDocumentElement: dipChildren) {
-			if (dipDocumentElement instanceof DipFolder) {							
-				((DipFolder) dipDocumentElement).computeAllChildren();
+	private void updateAllChildren(List<IDdeID> dipChildren) {
+		for (IDdeID dipDocumentElement: dipChildren) {
+			IDipElement element = DdeStorage.instance.get(dipDocumentElement);
+			
+			if (element instanceof DipFolder) {							
+				((DipFolder) element).computeAllChildren();
 			}
 		}
-	}
-	
-	@Override
-	public List<IDipElement> getChildren() {
-		if (fChildren == null){
-			computeChildren();
-		}		
-		return fChildren;
 	}
 	
 	@Override
@@ -282,10 +275,11 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	
 	private IDipElement createGlossaryFolder(IFile file) {	
 		ProjectGlossaryFolder main = dipProject().getGlossaryFolder();
-		fGlossFolder =  new GlossaryFolder(file, null);
+		GlossaryFolder glossFolder = GlossaryFolder.instance(file, null);
 		if (main != null) {
-			main.addFolder(fGlossFolder);
+			main.addFolder(glossFolder);
 		}
+		fGlossFolder = glossFolder.getDdeId();
 		return null;
 	}
 	
@@ -311,16 +305,16 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	//===========================		
 	// reports
 	
-	public IReportContainer getOrCreateReportContainer() {
+	public ReportContainer getOrCreateReportContainer() {
 		if (fReportContainer != null) {
-			return fReportContainer;
+			return DdeStorage.instance.get(fReportContainer);
 		}
 		
 		ReportContainer reportContainer = createReportsContainer();
-		fReportContainer = new FolderReportContainer(reportContainer);		
+		fReportContainer = FolderReportContainer.instance(reportContainer).getDdeId();
 		int index = fVarContainer == null ? 0 : 1;		
 		fChildren.add(index, fReportContainer);
-		return fReportContainer;
+		return reportContainer;
 	}
 	
 	private ReportContainer createReportsContainer() {	
@@ -332,7 +326,7 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	
 	@Override
 	public IReportContainer getReportContainer() {
-		return fReportContainer;
+		return DdeStorage.instance.get(fReportContainer);
 	}
 	
 	/**
@@ -341,7 +335,8 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	private void removeReportContainer() {
 		// удаляем термины из глоссария
 		if (fReportContainer != null) {
-			dipProject().getReportFolder().removeContainer(fReportContainer.getOriginalReportContainer());
+			FolderReportContainer folderContainer = (FolderReportContainer) getReportContainer();
+			dipProject().getReportFolder().removeContainer(folderContainer.getOriginalReportContainer());
 			fReportContainer = null;
 		} 
 				
@@ -361,8 +356,8 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	
 	public IVarContainer createNewVarContainer(IFile file) {
 		VarContainer varContainer = createVarContainer(file);
-		fVarContainer = new FolderVarContainer(varContainer);
-		fChildren.add(0, fVarContainer);
+		fVarContainer = FolderVarContainer.isntance(varContainer);
+		fChildren.add(0, fVarContainer.getDdeId());
 		return fVarContainer;
 	}
 	
@@ -377,7 +372,7 @@ public class DipFolder extends DipTableContainer implements IDipParent {
 	
 	@Override
 	public void deleteVarContainer() {
-		fChildren.remove(fVarContainer);
+		fChildren.remove(fVarContainer.getDdeId());
 		dipProject().getVariablesContainer().removeContainer(fVarContainer.getOriginalVarContainer());		
 		fVarContainer = null;
 	}

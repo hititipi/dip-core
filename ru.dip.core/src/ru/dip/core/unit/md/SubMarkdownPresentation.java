@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IDipUnit;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.unit.UnitType;
 
 public class SubMarkdownPresentation extends MarkDownPresentation {
@@ -30,7 +31,8 @@ public class SubMarkdownPresentation extends MarkDownPresentation {
 	public String getNumber() {
 		IDipParent parent = getUnit().parent();
 		if (parent.isActiveNumeration()) {
-			List<IDipElement> submdUnits = parent.getChildren()
+			List<IDipElement> submdUnits = 
+					DdeStorage.instance.getList(parent.getChildren())
 					.stream()
 					.filter(e -> e instanceof IDipUnit && ((IDipUnit)e).getUnitType() == UnitType.SUBMARKDOWN)			
 					.collect(Collectors.toList());

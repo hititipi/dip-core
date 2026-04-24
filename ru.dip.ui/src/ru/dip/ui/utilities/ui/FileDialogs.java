@@ -38,11 +38,11 @@ import org.eclipse.ui.model.WorkbenchLabelProvider;
 import org.eclipse.ui.views.navigator.ResourceComparator;
 
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.interfaces.IDipParent;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.ui.viewer.DipProjectFoldersContentProvider;
-import ru.dip.core.utilities.ui.viewer.DipProjectLabelProvider;
 import ru.dip.core.utilities.ui.viewer.DipProjectFoldersContentProvider.ParentHolder;
+import ru.dip.core.utilities.ui.viewer.DipProjectLabelProvider;
 import ru.dip.ui.Messages;
 import ru.dip.ui.navigator.NavigatorLabelProvider;
 
@@ -304,7 +304,7 @@ public class FileDialogs {
 			
 			@Override
 			public Object[] getElements(Object inputElement) {
-				return DipRoot.getInstance().getProjects().toArray();
+				return DdeStorage.instance.getProjects().toArray();
 			}
 			
 			@Override
@@ -328,7 +328,7 @@ public class FileDialogs {
 		dialog.setComparator(new ViewerComparator());
 		dialog.setTitle(WORKSPACE_PROJECT_DIALOG_TITLE);
 		dialog.setMessage(WORKSPACE_PROJECT_DIALOG_MSG);
-		dialog.setInput(DipRoot.getInstance());
+		dialog.setInput("");
 		if (dialog.open() == Window.OK) {
 			Object object = dialog.getFirstResult();
 			if (object != null && object instanceof DipProject) {

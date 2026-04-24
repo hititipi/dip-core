@@ -53,4 +53,6 @@ public interface ITableNode extends ITableElementContainer, ITablePaintable, IDi
 	IDipTableElement addNewUnitToEnd(DipUnit unit);
 	
 	IDipTableModel model();
+
+	void computeChildren();
 }

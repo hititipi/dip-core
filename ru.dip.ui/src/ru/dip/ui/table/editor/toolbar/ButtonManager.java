@@ -13,6 +13,7 @@
  *******************************************************************************/
 package ru.dip.ui.table.editor.toolbar;
 
+import java.util.List;
 import java.util.TreeSet;
 
 import org.eclipse.jface.action.Separator;
@@ -38,6 +39,8 @@ import ru.dip.core.model.DipProject;
 import ru.dip.core.model.DipTableContainer;
 import ru.dip.core.model.IncludeFolder;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.DipTableUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 import ru.dip.core.utilities.ui.LayoutManager;
@@ -48,9 +51,10 @@ import ru.dip.ui.export.Exporter;
 import ru.dip.ui.glossary.GlossaryDialog;
 import ru.dip.ui.imageview.ImagesView;
 import ru.dip.ui.imageview.TablesView;
+import ru.dip.ui.table.dialog.ShemaPropertiesDialog;
 import ru.dip.ui.table.editor.DipTableEditor;
 import ru.dip.ui.table.editor.toolbar.FilterToolBar.IFilterToolBarListener;
-import ru.dip.ui.table.ktable.dialog.ShemaPropertiesDialog;
+import ru.dip.ui.table.ktable.KDipTableSelector;
 import ru.dip.ui.table.ktable.model.DipTableModel;
 import ru.dip.ui.table.table.TableModel;
 import ru.dip.ui.table.table.TableSettings;
@@ -984,7 +988,7 @@ public class ButtonManager {
 	//==========================
 	// apply selection
 	
- 	public void applySelection(TreeSet<IDipDocumentElement> selectedElements) {
+ 	public void applySelection(TreeSet<IDdeID> selectedElements) {
  		if (fEditor.kTable().isDiffMode() && !fEditor.kTable().isDinamicallyDiffMode()) {
  			setEditedGroupEnable(false);
  			return;
@@ -998,7 +1002,8 @@ public class ButtonManager {
 		}
 	}
 		
-	private void applySelection(IDipDocumentElement element){
+	private void applySelection(IDdeID elementId){		
+		IDipDocumentElement element = DdeStorage.instance.get(elementId);
 		TableModel model = fEditor.model();
 		if (model.isTable(element)){
 			setNullSlection();
@@ -1042,8 +1047,11 @@ public class ButtonManager {
 		}
 	}
 	
-	private void applySeveralSelection(TreeSet<IDipDocumentElement> selectedElements) {
+	private void applySeveralSelection(TreeSet<IDdeID> selectedElementsIds) {
 		setEditedGroupEnable(false);
+		List<IDipDocumentElement> selectedElementsList = DdeStorage.instance.getDocumentElementList(selectedElementsIds);
+		TreeSet<IDipDocumentElement> selectedElements = new TreeSet<IDipDocumentElement>(KDipTableSelector.DDE_ORDER_COMPARATOR);
+		selectedElements.addAll(selectedElementsList);
 		
 		for (IDipDocumentElement dipDocElement: selectedElements) {
 			if (dipDocElement.isReadOnly()) {
@@ -1053,7 +1061,9 @@ public class ButtonManager {
 		
 		TableModel model = fEditor.model();		
 		// delete					
+		//IDipDocumentElement first = selectedElements.get(0);	
 		IDipDocumentElement first = selectedElements.first();			
+
 		if (first == null || model.isTable(first) || model.isParentHeader(first)) {
 			return;
 		}				

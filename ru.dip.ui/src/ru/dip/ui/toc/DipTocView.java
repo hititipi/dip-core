@@ -32,8 +32,8 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
-import org.eclipse.swt.events.ControlListener;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.ModifyEvent;
@@ -61,11 +61,13 @@ import org.eclipse.ui.menus.CommandContributionItemParameter;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.services.IServiceLocator;
 
+import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.DipProject;
 import ru.dip.core.model.DipTableContainer;
-import ru.dip.core.model.interfaces.IDisable;
+import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
-import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.model.interfaces.IDisable;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 import ru.dip.core.utilities.ui.swt.ColorProvider;
@@ -125,20 +127,24 @@ public class DipTocView extends ViewPart {
 			
 			@Override
 			public boolean hasChildren(Object element) {
-				if (element instanceof IDipParent) {
-					return ((IDipParent) element)
-							.getDipDocChildrenList()
-							.stream()
-							.anyMatch(IDipParent.class::isInstance);										
-				}				
+				if (element instanceof IDdeID && DipElementType.isFolderType((IDdeID)element)) {
+					IDipParent parent = ((IDdeID) element).getElement();
+					if (parent != null) {
+						return parent
+						.getDDEChildren()
+						.stream()
+						.map(IDdeID::getType)
+						.anyMatch(DipElementType::isFolderType);
+					}
+				}
 				return false;
 			}
 			
 			@Override
 			public Object getParent(Object element) {
-				if (element instanceof IDipDocumentElement) {
+				/*if (element instanceof IDipDocumentElement) {
 					((IDipDocumentElement) element).parent();
-				}				
+				}			*/	
 				return null;
 			}
 			
@@ -146,33 +152,33 @@ public class DipTocView extends ViewPart {
 			public Object[] getElements(Object inputElement) {
 				if (inputElement instanceof DipProject) {
 					DipProject model = (DipProject) inputElement;
-					return model.getDipChildren();
+					return model.getDDEChildren().toArray();
 				}			
 				return new Object[0];
 			}
 			
 			@Override
 			public Object[] getChildren(Object parentElement) {
-				if (parentElement instanceof IDipParent) {					
-					return ((IDipParent) parentElement).getDipChildren();
-				}					
+				if (parentElement instanceof IDdeID && DipElementType.isFolderType((IDdeID) parentElement)) {
+					IDipParent dipParent = ((IDdeID) parentElement).getElement();					
+					return dipParent.getDDEChildren().toArray();
+				}				
 				return null;
 			}
 		});
 		fViewer.addFilter(new ViewerFilter() {
 			
 			@Override
-			public boolean select(Viewer viewer, Object parentElement, Object element) {								
-				if (element instanceof IDipParent) {
+			public boolean select(Viewer viewer, Object parentElement, Object element) {																						
+				if (IDdeID.isDipParent(element)) {
 					if (fLevel < 1) {
 						return true;
-					}
-					
-					IDipParent parent = (IDipParent) element;
+					}					
+					IDipParent parent = ((IDdeID) element).getElement();
 					int level = DipUtilities.getNestedLevel(parent.resource());
-					return level <= fLevel;
-					
+					return level <= fLevel;					
 				}
+								
 				return false;
 			}
 		});
@@ -182,8 +188,9 @@ public class DipTocView extends ViewPart {
 			@Override
 			public boolean select(Viewer viewer, Object parentElement, Object element) {
 				if (fProject != null && fProject.getProjectProperties().isHideDisableObjsEnable()) {
-					if (element instanceof IDisable) {
-						IDisable disableElement = (IDisable) element;
+					IDipElement dipElement = ((IDdeID) element).getElement();
+					if (dipElement instanceof IDisable) {
+						IDisable disableElement = (IDisable) dipElement;
 						return !disableElement.isDisabledInDocument();
 					}
 				}
@@ -196,7 +203,8 @@ public class DipTocView extends ViewPart {
 			@Override
 			public void update(ViewerCell cell) {
 				clearCell(cell);
-				Object element = cell.getElement();
+				IDdeID id = (IDdeID) cell.getElement();
+				IDipElement element = id.getElement();
 				cell.setText(getText(element));
 				if (element instanceof IDisable 
 						&& ((IDisable) element).isDisabledInDocument()) {
@@ -233,7 +241,7 @@ public class DipTocView extends ViewPart {
 				event.height = size.y * lines;
 			}
 			
-			private String getText(Object element) {
+			private String getText(IDipElement element) {
 				
 				if (element instanceof IDipParent) {
 					IDipParent parent = ((IDipParent) element);
@@ -267,7 +275,7 @@ public class DipTocView extends ViewPart {
 			}
 		});
 		
-		fComposite.addControlListener(new ControlListener() {
+		fComposite.addControlListener(new ControlAdapter() {
 			
 			@Override
 			public void controlResized(ControlEvent e) {
@@ -275,10 +283,6 @@ public class DipTocView extends ViewPart {
 				fViewer.expandAll(true);
 			}
 			
-			@Override
-			public void controlMoved(ControlEvent e) {
-				
-			}
 		});
 							
 		fViewer.setAutoExpandLevel(TreeViewer.ALL_LEVELS);	
@@ -385,8 +389,8 @@ public class DipTocView extends ViewPart {
 		IStructuredSelection selection = fViewer.getStructuredSelection();
 		if (selection != null && selection.size() == 1) {
 			Object obj = selection.getFirstElement();
-			if (obj instanceof DipTableContainer) {
-				return (DipTableContainer) obj;
+			if (IDdeID.isDipParent(obj)) {
+				return ((IDdeID) obj).getElement();
 			}
 		}
 		return null;
@@ -396,8 +400,10 @@ public class DipTocView extends ViewPart {
 		IStructuredSelection selection = fViewer.getStructuredSelection();
 		if (selection != null) {
 			return Stream.of(selection.toArray())
-			.filter(DipTableContainer.class::isInstance)
-			.map(DipTableContainer.class::cast);			
+					.map(IDdeID.class::cast)
+					.map(IDdeID::getElement)
+					.filter(DipTableContainer.class::isInstance)
+					.map(DipTableContainer.class::cast);			
 		}
 		return Stream.empty();
 	}
@@ -440,6 +446,11 @@ public class DipTocView extends ViewPart {
 	}
 	
 	private synchronized void setViewerInput(DipProject project) {
+		if (fProject == project) {
+			fViewer.refresh();
+			return;
+		}
+
 		fProject = project;
 		if (fViewer != null && !fViewer.getTree().isDisposed()) {
 			if (project != null) {

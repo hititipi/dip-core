@@ -52,7 +52,7 @@ public class RceEntryElement extends RceDipElement implements ITableNode {
 	 * Создает список детей
 	 * @throws ReportRuleSyntaxException 
 	 */
-	public void computeChildren() throws ReportRuleSyntaxException {
+	public void computeReportChildren() throws ReportRuleSyntaxException {
 		fChildren = new ArrayList<>();
 		List<IDipElement> dipElements = ReportEntryChecker.findEntry(fEntryPresentation.getEntry(), fModel.getDipProject());
 		for (IDipElement element: dipElements) {
@@ -112,7 +112,7 @@ public class RceEntryElement extends RceDipElement implements ITableNode {
 				if (currentFields.size() == 1) {
 					joinChildren.add(currentElement);
 				} else if (!currentFields.isEmpty()) {
-					FieldUnity fieldUnity = new FieldUnity(currentUnit, currentFields);
+					FieldUnity fieldUnity = FieldUnity.instance(currentUnit, currentFields);
 					joinChildren.add(new TableElement(fieldUnity, currentElement.parent()));					
 				} 			
 				currentElement = null;
@@ -252,6 +252,11 @@ public class RceEntryElement extends RceDipElement implements ITableNode {
 	@Override
 	public IDipTableElement addNewUnitToEnd(DipUnit unit) {
 		return null;
+	}
+
+	@Override
+	public void computeChildren() {
+		
 	}
 	
 	

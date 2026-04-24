@@ -103,6 +103,9 @@ public class MdPresentationParser {
 	private String parse(IFile file) throws IOException{
 		fNodes.clear();
 		String input = FileUtilities.readFile(file);
+		if (input == null) {
+			return null;
+		}	
 		input = VariableInteractor.changeVar(input, fUnit);
 		return parse(input);
 	}

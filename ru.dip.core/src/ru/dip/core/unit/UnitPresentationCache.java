@@ -15,10 +15,12 @@ package ru.dip.core.unit;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 
@@ -76,12 +78,39 @@ private static class PresentationId {
 	private static Map<PresentationId, TablePresentation> fPresentationById = new HashMap<>();
 	
 	public static TablePresentation getPresentation(IFile file) {
-		return fPresentationById.get(new PresentationId(file));
+		return getPresentationByID(new PresentationId(file));
 	}
 	
-	public static void putPresentation(IFile file, TablePresentation presentation) {
-		fPresentationById.put(new PresentationId(file), presentation);
+	public static TablePresentation getPresentationByID(PresentationId presentationID) {
+		return fPresentationById.get(presentationID);
 	}
+	
+	public static void printDEBUG() {
+		System.out.println("PRESENTATION STORAGE: " + fPresentationById.keySet().stream().map(PresentationId::getFile).toList());
+	}
+	
+	
+	public static void putPresentation(IFile file, TablePresentation presentation) {
+		fPresentationById.put(new PresentationId(file), presentation);				
+	}
+	
+	public static void changeKey(IFile oldFile, IFile newFile) {
+		Optional<PresentationId> presentationID = fPresentationById.keySet().stream().filter(prID -> prID.fFile.equals(oldFile)).findFirst();
+		if (presentationID.isEmpty()) {
+			return;
+		}		
+		TablePresentation tp = getPresentationByID(presentationID.get());
+
+
+		fPresentationById.put(new PresentationId(newFile), tp);				
+		fPresentationById.remove(new PresentationId(oldFile));
+	}
+	
+	
+	private static PresentationId findByFIle(IFile file) {
+		return fPresentationById.keySet().stream().filter(prID -> prID.fFile.equals(file)).findFirst().orElse(null);
+	}
+	
 	
 	public static void applyIfExists(IFile file, Consumer<TablePresentation> consumer) {
 		TablePresentation tablePresentation = fPresentationById.get(new PresentationId(file));
@@ -114,4 +143,36 @@ private static class PresentationId {
 			presentation.dispose();
 		}
 	}
+	
+	
+	public static void clearForContainer(IContainer container) {
+		fPresentationById.keySet().removeIf(id -> inContainer(id,  container));
+	}
+	
+	private static boolean inContainer(PresentationId id, IContainer container) {
+		IFile file = id.getFile();
+		IContainer parent = file.getParent();
+		while (parent != null) {
+			if (parent.equals(container)) {
+				return true;
+			}
+			if (parent instanceof IProject) {
+				return false;
+			}
+			parent = parent.getParent();
+		}
+		return false;
+	}
+
+	public static void remove(IFile file) {
+		PresentationId id = findByFIle(file);
+		if (id != null) {
+			fPresentationById.remove(id);
+		}
+	}
+
+
+	
+	
 }
+

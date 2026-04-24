@@ -20,10 +20,14 @@ import java.util.Set;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.swt.graphics.Point;
 
+import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.finder.FindSettings;
 import ru.dip.core.model.finder.IFindedIdPoints;
 import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.IUnitPresentation;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.factory.IPresentationFactory;
 import ru.dip.core.unit.factory.PresentationFactoryProvider;
 import ru.dip.core.unit.form.FormPresentation;
@@ -31,10 +35,33 @@ import ru.dip.core.utilities.TagStringUtilities;
 
 public class UnitPresentation extends UnitExtension implements IUnitPresentation, IFindedIdPoints {
 
+	public static UnitPresentation instance(IDipUnit unit) {
+		UnitPresentation presentation = new UnitPresentation(unit);		
+		UnitPresentation storageInstance = DdeStorage.instance.get(presentation.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
+		}
+		
+		DdeStorage.instance.put(presentation.getDdeId(), presentation);
+		return presentation;
+	}
+	
 	private UnitType fUnitType;
+	private IDdeID fDdeId;
 
-	public UnitPresentation(IDipUnit element) {
-		super(element);
+	private UnitPresentation(IDipUnit unit) {
+		super(unit);
+		fDdeId = DdeID.ofUnitExtension(this, unit.getDdeId());
+	}
+	
+	@Override
+	public void updateDdeID() {
+		fDdeId = DdeID.ofUnitExtension(this, getDipUnitId());
+	}
+	
+	@Override
+	public IDdeID getDdeId() {
+		return fDdeId;
 	}
 	
 	public IFile getFile() {
@@ -42,7 +69,7 @@ public class UnitPresentation extends UnitExtension implements IUnitPresentation
 	}
 	
 	@Override
-	public TablePresentation getPresentation(){
+	public TablePresentation getPresentation(){		
 		TablePresentation tablePresentation = UnitPresentationCache.getPresentation(getFile());
 		if (tablePresentation == null) {
 			tablePresentation = createTablePresentation();
@@ -187,6 +214,11 @@ public class UnitPresentation extends UnitExtension implements IUnitPresentation
 	
 	public boolean isFind() {
 		return fFindedIdPoints != null;
+	}
+	
+	@Override
+	public DipElementType type() {
+		return DipElementType.UNIT_PRESENTATION;
 	}
 	
 	@Override

@@ -21,19 +21,18 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 
 public class DipReservedFolder extends DipContainer {
 		
 	public static DipReservedFolder instance(IFolder container, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(container, parent, DipElementType.RESERVED_FOLDER);
-		if (element == null) {
-			DipReservedFolder reservedFolder = new DipReservedFolder(container, parent);
-			DipRoot.getInstance().putElement(reservedFolder);
-			return reservedFolder;
-		} else {
-			return (DipReservedFolder) element;
+		DipReservedFolder reservedFolder = new DipReservedFolder(container, parent);
+		DipReservedFolder storageInstance = DdeStorage.instance.get(reservedFolder.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
+		DdeStorage.instance.put(reservedFolder.getDdeId(), reservedFolder);
+		return reservedFolder;
 	}
 	
 	private DipReservedFolder(IFolder folder, IParent parent) {
@@ -44,7 +43,7 @@ public class DipReservedFolder extends DipContainer {
 		fChildren = new ArrayList<>();
 		try {
 			for (IResource resource: resource().members()){
-				DipElementType type = DipRoot.getType(resource);
+				DipElementType type = DipElementType.getType(resource);
 				switch (type){
 				case RESERVED_FOLDER:{
 					createReservedFolder((IFolder) resource);

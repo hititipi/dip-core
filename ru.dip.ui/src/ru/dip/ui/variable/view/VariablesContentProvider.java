@@ -34,8 +34,8 @@ public class VariablesContentProvider implements ITreeContentProvider {
 	@Override
 	public Object[] getElements(Object inputElement) {
 		if (inputElement instanceof IVarContainer){
-			IVarContainer glossFolder = (IVarContainer) inputElement;
-			return glossFolder.getChildren().toArray();
+			IVarContainer varContainer = (IVarContainer) inputElement;
+			return varContainer.getVariables().toArray();
 		}
 		return new Object[0];
 	}

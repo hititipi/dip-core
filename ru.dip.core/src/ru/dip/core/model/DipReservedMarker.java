@@ -17,21 +17,20 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 
 public class DipReservedMarker extends DipElement {
 
 	public final static String RESERVED_MARKER_NAME = ".rsvd";
 	
 	public static DipReservedMarker instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.RESERVED_MARKER);
-		if (element == null) {
-			DipReservedMarker dipReserveMarker = new DipReservedMarker(resource, parent);
-			DipRoot.getInstance().putElement(dipReserveMarker);
-			return dipReserveMarker;
-		} else {
-			return (DipReservedMarker) element;
-		}
+		DipReservedMarker dipReserveMarker = new DipReservedMarker(resource, parent);
+		DipReservedMarker storageInstance = DdeStorage.instance.get(dipReserveMarker.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
+		}		
+		DdeStorage.instance.put(dipReserveMarker.getDdeId(), dipReserveMarker);
+		return dipReserveMarker;
 	}
 	
 	private DipReservedMarker(IResource resource, IParent parent) {

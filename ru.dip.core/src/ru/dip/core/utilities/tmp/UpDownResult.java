@@ -13,8 +13,8 @@
  *******************************************************************************/
 package ru.dip.core.utilities.tmp;
 
+import java.util.Collection;
 import java.util.List;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import ru.dip.core.model.interfaces.IDipDocumentElement;
@@ -35,7 +35,7 @@ public class UpDownResult implements ResultOperation {
 		fDipDocElementId = DipUtilities.relativeProjectID(dipDocElement);
 	}
 	
-	public UpDownResult(boolean up, TreeSet<IDipDocumentElement> dipDocElements) {
+	public UpDownResult(boolean up, Collection<IDipDocumentElement> dipDocElements) {
 		fUp = up;
 		fDipDocElementIds = dipDocElements.stream()
 				.map(DipUtilities::relativeProjectID)

@@ -42,6 +42,7 @@ import ru.dip.core.utilities.GITUtilities;
 import ru.dip.core.utilities.TagStringUtilities;
 import ru.dip.core.utilities.ui.gc.GCUtils;
 import ru.dip.core.utilities.ui.swt.ColorProvider;
+import ru.dip.ui.navigator.NavigatorLabelProvider;
 import ru.dip.ui.table.ktable.KTableComposite;
 import ru.dip.ui.table.ktable.model.ContentProvider;
 import ru.dip.ui.table.ktable.model.ContentType;
@@ -117,12 +118,28 @@ public class IDPainter {
 		return text.replaceAll(separator, separator + "\n"); //$NON-NLS-1$
 	}
 
+	
+	/*
+	 *  Возможно имеет смысл сохранять Image для Include - объектов
+	 *  Folder - Include
+	 *  Folder - Include - ReadOnly
+	 *  File - Include
+	 *  File - Include - ReadOnly
+	 *  Один раз получить для всех Image и их использовать
+	 *  
+	 */
 	private Image getNavigatorImage(IDipDocumentElement dipDocElement) {
 		if (dipDocElement instanceof IUnitExtension || dipDocElement instanceof IDipUnit) {
+			if (dipDocElement.isIncluded()) {
+				return NavigatorLabelProvider.decorateInclude(ImageProvider.FILE, dipDocElement);
+			}						
 			return ImageProvider.FILE;
-		} else if (dipDocElement instanceof IDipParent) {
+		} else if (dipDocElement instanceof IDipParent) {	
+			if (dipDocElement.isIncluded()) {
+				return NavigatorLabelProvider.decorateInclude(ImageProvider.FOLDER, dipDocElement);
+			}
 			return ImageProvider.FOLDER;
-		}
+		}		
 		return null;
 	}
 	

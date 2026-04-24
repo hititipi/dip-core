@@ -29,6 +29,9 @@ import ru.dip.core.model.DipProject;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.FileUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 
@@ -42,16 +45,23 @@ public class VarContainer implements IVarContainer, IParent {
 	private IFile fVarFile;
 	private List<Variable> fVariables = new ArrayList<>();
 	private List<IVarContainerListener> fListeners = new ArrayList<>();
-	private IDipParent fDipParent;
+	private IDdeID fDipParent;
+	private IDdeID fDde;
 	
 	public VarContainer(IFile varFile, IDipParent dipParent) {		
 		fVarFile = varFile;
-		fDipParent = dipParent;
+		fDipParent = dipParent.getDdeId();		
+		fDde = DdeID.ofVarContainer(this);
 		try {
 			readVariables();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	@Override
+	public IDdeID getDdeId() {
+		return fDde;
 	}
 	
 	@Override
@@ -71,17 +81,22 @@ public class VarContainer implements IVarContainer, IParent {
 	
 	@Override
 	public IDipParent getDipParent() {
-		return fDipParent;
+		return DdeStorage.instance.get(fDipParent);
 	}
 	
 	@Override
 	public IParent parent() {
+		return DdeStorage.instance.get(fDipParent);
+	}
+	
+	@Override
+	public IDdeID parentDdeId() {
 		return fDipParent;
 	}
 	
 	@Override
 	public DipProject dipProject() {
-		return fDipParent.dipProject();
+		return getDipParent().dipProject();
 	}
 	
 	@Override
@@ -122,7 +137,7 @@ public class VarContainer implements IVarContainer, IParent {
 	}
 	
 	private void saveVariables() throws IOException {
-		ArrayList<String> lines = new ArrayList<>();
+		List<String> lines = new ArrayList<>();
 		for (Variable field: fVariables){
 			StringBuilder builder = new StringBuilder();
 			builder.append(field.name());
@@ -158,7 +173,7 @@ public class VarContainer implements IVarContainer, IParent {
 	public void pasteVariables(List<Variable> addFields, List<Variable> changeFields) throws IOException{
 		addFields.forEach(this::pasteVariable);
 		for (Variable field: changeFields){
-			Variable removeField = getChild(field.name());
+			Variable removeField = getVariable(field.name());
 			if (removeField != null){
 				fVariables.remove(removeField);
 			}
@@ -196,8 +211,13 @@ public class VarContainer implements IVarContainer, IParent {
 	}
 	
 	@Override
-	public Variable getChild(String name) {
-		for (Object field: getChildren()){
+	public IDdeID getChild(String name) {
+		throw new UnsupportedOperationException();		
+	}
+	
+	
+	public Variable getVariable(String name) {
+		for (Object field: getVariables()){
 			if (field instanceof Variable) {
 				Variable var = (Variable) field;
 				if (var.name().equals(name)) {
@@ -214,8 +234,8 @@ public class VarContainer implements IVarContainer, IParent {
 	}
 	
 	@Override
-	public List<? extends IDipElement> getChildren() {
-		return fVariables;
+	public List<IDdeID> getChildren() {
+		throw new UnsupportedOperationException();
 	}
 	
 	//============================
@@ -238,12 +258,12 @@ public class VarContainer implements IVarContainer, IParent {
 	
 	@Override
 	public boolean canDelete() {
-		return !fDipParent.isReadOnly();
+		return !DdeStorage.instance.get(fDipParent).isReadOnly();
 	}
 
 	@Override
 	public boolean canRename() {
-		return fDipParent.canDelete();
+		return DdeStorage.instance.get(fDipParent).canDelete();
 	}
 
 	@Override
@@ -253,12 +273,12 @@ public class VarContainer implements IVarContainer, IParent {
 
 	@Override
 	public boolean isReadOnly() {
-		return fDipParent.isReadOnly();
+		return DdeStorage.instance.get(fDipParent).isReadOnly();
 	}
 
 	@Override
 	public boolean isIncluded() {
-		return fDipParent.isIncluded();
+		return DdeStorage.instance.get(fDipParent).isIncluded();
 	}
 	
 	//============================
@@ -287,7 +307,9 @@ public class VarContainer implements IVarContainer, IParent {
 	}
 
 	@Override
-	public void removeChild(IDipElement child) {}
+	public void removeChild(IDdeID child) {
+		throw new UnsupportedOperationException();
+	}
 
 	@Override
 	public void refresh() {}

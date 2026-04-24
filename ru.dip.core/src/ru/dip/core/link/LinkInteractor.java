@@ -411,7 +411,7 @@ public class LinkInteractor {
 	 */
 	public void updateLinks(String lastID, String newID, IDipParent parent, boolean childrenLinks) {		
 		LinkUpdater updater = new LinkUpdater(lastID, newID);
-		for (IDipDocumentElement dipDocElement : parent.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocElement : parent.getDdeElements()) {
 			if (dipDocElement instanceof DipUnit) {
 				updateLinks(updater, (DipUnit) dipDocElement, childrenLinks);
 			} else if (dipDocElement instanceof IDipParent) {
@@ -464,7 +464,7 @@ public class LinkInteractor {
 		if (parent == null) {
 			return true;
 		}
-		for (IDipDocumentElement dipDocumentElement : parent.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocumentElement : parent.getDdeElements()) {
 			if (dipDocumentElement instanceof DipUnit) {
 				boolean checkUnit = checkLinks((DipUnit) dipDocumentElement);
 				if (!checkUnit) {

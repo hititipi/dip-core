@@ -16,19 +16,20 @@ package ru.dip.core.model;
 import org.eclipse.core.resources.IResource;
 
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 
 public class TocRef extends DipUnit {
 	
 	public static TocRef instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.TOC_REF);
-		if (element == null) {
-			TocRef unit = new TocRef(resource, parent);
-			DipRoot.getInstance().putElement(unit);
-			return unit;
-		} else {
-			return (TocRef) element;
+		TocRef unit = new TocRef(resource, parent);
+		TocRef storageInstance = DdeStorage.instance.get(unit.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
+		
+		DdeStorage.instance.put(unit.getDdeId(), unit);
+		unit.init();
+		return unit;
 	}
 
 	private TocRef(IResource resource, IParent parent) {

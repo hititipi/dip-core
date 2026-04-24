@@ -36,8 +36,8 @@ import ru.dip.core.model.interfaces.IUnitPresentation;
 import ru.dip.core.report.model.condition.Condition;
 import ru.dip.core.unit.UnitType;
 import ru.dip.ktable.DipTable;
+import ru.dip.ui.table.actions.edit.EditUnitAction;
 import ru.dip.ui.table.ktable.KTableComposite;
-import ru.dip.ui.table.ktable.actions.edit.EditUnitAction;
 import ru.dip.ui.table.ktable.celleditors.CellInfo;
 import ru.dip.ui.table.ktable.render.CommentCellRender;
 import ru.dip.ui.table.ktable.render.CommentPainter;
@@ -107,7 +107,7 @@ public class DipTableModel implements KTableModel, IDipTableModel {
 		fHeaderRender = new HeaderCellRender(this);
 		fCommentCellRender = new CommentCellRender(this);
 		fCommentPainter = new CommentPainter(fTableComposite);
-	
+
 		readIdMode();
 		readCommentMode();
 
@@ -118,7 +118,7 @@ public class DipTableModel implements KTableModel, IDipTableModel {
 	// ===========================
 	// модель
 	
-	public void computeElements() {
+	public void computeElements() {		
 		// если only diff mode
 		if (fTableComposite.isDiffMode() && fTableComposite.isOnlyDiffMode()) {
 			computeDiffElements();
@@ -263,8 +263,16 @@ public class DipTableModel implements KTableModel, IDipTableModel {
 	/**
 	 * Установить новую модель
 	 */
-	public void setTableModel(TableModel fModel) {		
-		fRootTableModel = fModel; 
+	public void setTableModel(TableModel fModel) {
+		fRootTableModel = fModel;
+		fElements.clear();
+		if (fParentsElements != null) {
+			fParentsElements.clear();
+		}
+		fRootNode = null;
+		fRootNode = TableNode.rootNode(this, fRootTableModel); 
+		//fRootNode.setExpand(true);		
+		computeElements();	
 	}
 	
 	/**
@@ -293,7 +301,6 @@ public class DipTableModel implements KTableModel, IDipTableModel {
 	 */
 	private List<IDipParent> expandedNodes(){
 		List<IDipParent> result =  fElements.stream()
-		//List<IDipParent> result =  fElements.parallelStream()
 		.filter(TableNode.class::isInstance)
 		.map(TableNode.class::cast)
 		.filter(TableNode::expand)
@@ -417,9 +424,8 @@ public class DipTableModel implements KTableModel, IDipTableModel {
 		
 		if (isShowId()) {
 			List<IDipTableElement> elements = new ArrayList<>();
-			elementsToUpdate.forEach(element -> computeElementsForUpdate(elements, element));
+			elementsToUpdate.forEach(element -> computeElementsForUpdate(elements, element));			
 			elements.stream().forEach(el -> prepareID(el));
-			//elements.parallelStream().forEach(el -> prepareID(el));
 		}
 		
 		// снимаем флаг
@@ -464,11 +470,18 @@ public class DipTableModel implements KTableModel, IDipTableModel {
 		.forEach(this::updatePresentation);
 	}
 	
-	public void updateDescriptions() {
+	public void updateDescriptions() {		
 		fElements.stream()
 		.filter(IDipTableElement::notEmptyDescription)
 		.forEach(this::updatePresentation);
 	}
+	
+	public void updateDescriptions(List<IDipTableElement> elements) {
+		fElements.stream()
+		.filter(IDipTableElement::notEmptyDescription)
+		.forEach(this::updatePresentation);
+	}
+	
 	
 	public void updateDescriptionsInNode(ITableNode node) {
 		node.children()
@@ -519,7 +532,6 @@ public class DipTableModel implements KTableModel, IDipTableModel {
 				.filter(IDipTableElement::isVisible)
 				.collect(Collectors.toList());
 		elementsToUpdate.stream().forEach(element -> idPainter().onlyMeasureElements((IDipTableElement) element));
-		//elementsToUpdate.parallelStream().forEach(element -> idPainter().onlyMeasureElements((IDipTableElement) element));
 	}
 	
 	private void updateCommentColumn() {

@@ -18,9 +18,8 @@ import org.eclipse.core.resources.IResource;
 
 import ru.dip.core.model.DipElement;
 import ru.dip.core.model.DipElementType;
-import ru.dip.core.model.DipRoot;
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
 
 public class Report extends DipElement {
 
@@ -28,14 +27,9 @@ public class Report extends DipElement {
 	public static final String REPORT_EXTENSION_WITH_DOT = "." + REPORT_EXTENSION;
 
 	public static Report instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.REPORT);
-		if (element == null) {
-			Report report = new Report(resource, parent);
-			DipRoot.getInstance().putElement(report);
-			return report;
-		} else {
-			return (Report) element;
-		}
+		Report report = new Report(resource, parent);		
+		DdeStorage.instance.put(report.getDdeId(), report);
+		return report;
 	}
 	
 	private Report(IResource resource, IParent parent) {

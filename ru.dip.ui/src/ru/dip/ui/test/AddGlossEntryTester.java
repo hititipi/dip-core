@@ -21,13 +21,12 @@ import org.eclipse.ui.PlatformUI;
 
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.glossary.GlossaryField;
 import ru.dip.core.model.glossary.GlossaryFolder;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 
 public class AddGlossEntryTester extends PropertyTester {
-
 
 	@Override
 	public boolean test(Object receiver, String property, Object[] args, Object expectedValue) {
@@ -44,15 +43,15 @@ public class AddGlossEntryTester extends PropertyTester {
 			if (!DipNatureManager.hasNature(file)){
 				return false;
 			}
-			DipProject project = DipRoot.getInstance().getDipProject(file.getProject());
-			if (project == null){
+			DipProject dipProject = DdeStorage.instance.getOrCreate(file.getProject());
+			if (dipProject == null){
 				return false;
 			}
-			GlossaryFolder glossFolder = project.getGlossaryFolder();
+			GlossaryFolder glossFolder = dipProject.getGlossaryFolder();
 			if (glossFolder == null){
 				return false;
 			}			
-			GlossaryField field = glossFolder.getChild(text);
+			GlossaryField field = glossFolder.getField(text);
 			if (field == null){
 				return true;
 			}

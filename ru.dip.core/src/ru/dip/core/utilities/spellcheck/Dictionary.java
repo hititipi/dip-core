@@ -158,7 +158,7 @@ public class Dictionary {
 
 	public List<SpellCheckError> checkDipParent(IDipParent parent) {
 		List<SpellCheckError> result = new ArrayList<>();
-		for (IDipDocumentElement dipDocElement : parent.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocElement : parent.getDdeElements()) {
 			if (dipDocElement instanceof IDipParent) {
 				List<SpellCheckError> errors = checkDipParent((IDipParent) dipDocElement);
 				if (errors != null) {

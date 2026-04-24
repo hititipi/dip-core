@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.UnitDescriptionPresentation;
 import ru.dip.core.unit.form.FieldUnity;
 import ru.dip.core.unit.form.FormField;
@@ -151,7 +152,7 @@ public interface ITableElementContainer {
 		if (index == 0) {
 			return 0;
 		}
-		IDipDocumentElement previousReq = DipTableUtilities.getPreviousElement(req);	
+		IDdeID previousReq = DipTableUtilities.getPreviousElement(req);	
 		if (previousReq == null) {
 			return -1;
 		}
@@ -167,6 +168,20 @@ public interface ITableElementContainer {
 	//===============================
 	// find
 	
+	/**
+	 * Простой поиск, возвращает первый найденный элемент
+	 */
+	default IDipTableElement findFirst(String name) {
+		for (IDipTableElement element: children()) {
+			if ((element.getDdeID()).getName().equals(name)) {
+				return element;
+			}
+		}
+		return null;
+	}
+	
+	// может быть ошибка если dipDocElement == null;
+	// мб переделать dipDocElement() чтобы возвращал Optional
 	default IDipTableElement find(String name) {
 		for (IDipTableElement element: children()) {
 			if ((element.dipDocElement()).name().equals(name)) {

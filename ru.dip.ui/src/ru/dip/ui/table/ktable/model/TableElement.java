@@ -18,16 +18,17 @@ import java.util.List;
 import org.eclipse.swt.graphics.Color;
 
 import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.ui.IBackground;
 import ru.dip.ui.table.ktable.diff.DiffModel;
 import ru.dip.ui.table.table.TableSettings;
-
 
 public class TableElement implements IBackground, IDipIdElement, IDipTableElement {
 	
 	private static final int DEFAULT_PRESENTATION_WIDTH = 200;
 	
-	private final IDipDocumentElement fDipDocElement;
+	private IDdeID fDipDocElement;
 	private final ITableNode fParent;
 	private boolean fSelect;
 	
@@ -40,7 +41,7 @@ public class TableElement implements IBackground, IDipIdElement, IDipTableElemen
 
 	public TableElement(IDipDocumentElement dipDocElement, ITableNode node) {
 		fParent = node;
-		fDipDocElement = dipDocElement;
+		fDipDocElement = dipDocElement.getDdeId();
 	}
 	
 	//===========================
@@ -96,8 +97,18 @@ public class TableElement implements IBackground, IDipIdElement, IDipTableElemen
 	// IDipDocumentElement
 	
 	@Override
+	public void setDipElment(IDdeID id) {
+		fDipDocElement = id;
+	}
+	
+	
+	@Override
 	public IDipDocumentElement dipDocElement() {
-		return fDipDocElement;
+		IDipDocumentElement element =  DdeStorage.instance.get(fDipDocElement);
+		if (element == null) {	
+			parent().computeChildren();
+		}
+		return element;
 	}
 	
 	//=======================
@@ -124,7 +135,6 @@ public class TableElement implements IBackground, IDipIdElement, IDipTableElemen
 				result = fIdHeight;
 			}
 		}
-		
 
 		int fCommentHeight = getInt(ContentId.COMMENT, ContentType.HEIGHT);	
 		// compare with comment
@@ -181,17 +191,16 @@ public class TableElement implements IBackground, IDipIdElement, IDipTableElemen
 	}
 		
 	@Override
-	public Color background() {
+	public Color background() {		
 		if (parent() == null) {
-			if (fDipDocElement.isDisabled()) {
+			if (dipDocElement().isDisabled()) {
 				return TableSettings.tableDisableColor();
 			}
 			return get(ContentId.PRESENTATION, ContentType.BACKGROUND, Color.class);
-		}
-		
+		}		
 		if (isDisable() && !parent().model().tableComposite().isSelect(this)) {
 			return TableSettings.tableDisableColor();
-		}
+		}	
 		return get(ContentId.PRESENTATION, ContentType.BACKGROUND, Color.class);
 	}
 
@@ -209,7 +218,7 @@ public class TableElement implements IBackground, IDipIdElement, IDipTableElemen
 	
 	public boolean isDiff() {
 		if (fParent.model().getTableModel() instanceof DiffModel) {
-			return ((DiffModel) fParent.model().getTableModel()).getDiffStatus(fDipDocElement) != null;
+			return ((DiffModel) fParent.model().getTableModel()).getDiffStatus(dipDocElement()) != null;
 		}
 		return false;
 	}
@@ -237,7 +246,10 @@ public class TableElement implements IBackground, IDipIdElement, IDipTableElemen
 	
 	@Override
 	public String toString() {
-		return "TABLE ELEMENT: " + fDipDocElement.name() + " " + fDipDocElement.getClass().getSimpleName(); //$NON-NLS-1$ //$NON-NLS-2$
+		if (DdeStorage.instance.get(fDipDocElement) == null) {
+			return "TABLE ELEMENT: Null element" + fDipDocElement;
+		} 	
+		return "TABLE ELEMENT: " + dipDocElement() + " " + dipDocElement().getClass().getSimpleName(); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 
 	@Override
@@ -289,6 +301,11 @@ public class TableElement implements IBackground, IDipIdElement, IDipTableElemen
 	@Override
 	public List<IDipTableElement> getLinkedElements() {
 		return fLinkedElements;
+	}
+
+	@Override
+	public IDdeID getDdeID() {
+		return fDipDocElement;
 	}
 	
 }

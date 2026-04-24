@@ -109,7 +109,7 @@ public class ContextMenuManager {
 				// add glossary action
 				String text = fStyledText.getSelectionText();
 				if (canAddToGloss(text)) {
-					GlossaryField field = glossFolder.getChild(text);
+					GlossaryField field = glossFolder.getField(text);
 					if (field == null) {
 						mng.add(addGlossAction);
 					} else {

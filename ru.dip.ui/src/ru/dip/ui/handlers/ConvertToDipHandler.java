@@ -23,7 +23,7 @@ import org.eclipse.ui.handlers.HandlerUtil;
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.manager.DipProjectResourceCreator;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.HandlerUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.SchemaUtilities;
@@ -44,7 +44,7 @@ public class ConvertToDipHandler extends AbstractHandler {
 	}
 
 	private DipProject convertToDipProject(IProject project, Shell shell){
-		DipProject dipProject = DipRoot.getInstance().getDipProject(project);
+		DipProject dipProject =DdeStorage.instance.getOrCreate(project);
 		DipProjectResourceCreator.checkSchemaFolder(shell, dipProject);
 		DipProjectResourceCreator.createDipFile(dipProject);
 		dipProject.computeChildren();

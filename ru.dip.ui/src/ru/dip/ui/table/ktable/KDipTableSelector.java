@@ -43,6 +43,9 @@ import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.IUnitDescription;
 import ru.dip.core.model.interfaces.IUnitExtension;
 import ru.dip.core.model.interfaces.IUnitPresentation;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
+import ru.dip.core.utilities.DipTableUtilities;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 import ru.dip.core.utilities.ui.swt.KeyMode;
@@ -61,6 +64,8 @@ import ru.dip.ui.table.table.TableModel;
 public class KDipTableSelector implements ISelector {
 
 	public static final ReqComparator ORDER_COMPARATOR = new ReqComparator();
+	public static final DdeComparator DDE_ORDER_COMPARATOR = new DdeComparator();
+
 	
 	public static String getIDDialog(String dialogName) {
 		Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
@@ -95,7 +100,7 @@ public class KDipTableSelector implements ISelector {
 	private final KTableComposite fTableComposite;
 	// selection
 	private List<IDipTableElement> fSelectedTblElements = new ArrayList<>();
-	private TreeSet<IDipDocumentElement> fSelectedDipDocElements = new TreeSet<>(new ReqComparator());
+	private TreeSet<IDdeID> fSelectedDipDocElements = new TreeSet<>(new ReqComparator());
 	private IDipTableElement fLastSelectedObj;
 	private boolean fDoubleClickFolderMode = false;
 	
@@ -103,7 +108,7 @@ public class KDipTableSelector implements ISelector {
 		fTableComposite = tableComposite;
 	}
  
-	public void setSelection(IDipTableElement element, KeyMode mode) {
+	public void setSelection(IDipTableElement element, KeyMode mode) {			
 		// elements for update
 		Set<IDipTableElement> forUpdateElements = new HashSet<>();		
 		removeDeletedElementsFromSelected();
@@ -212,8 +217,8 @@ public class KDipTableSelector implements ISelector {
 		fSelectedTblElements.addAll(element.linkedWithibleElements());		
 	}
 	
-	private void removeDeletedElementsFromSelected() {
-		fSelectedTblElements.removeIf(e -> e.dipResourceElement().resource() == null || !e.dipResourceElement().resource().exists());	
+	private void removeDeletedElementsFromSelected() {		
+		fSelectedTblElements.removeIf(e ->  DdeStorage.instance.get(e.getDdeID()) == null ||  e.dipResourceElement().resource() == null || !e.dipResourceElement().resource().exists());	
 	}
 
 	public void updateGroupSelection() {
@@ -238,16 +243,16 @@ public class KDipTableSelector implements ISelector {
 		for (Object obj : fSelectedTblElements) {
 			IDipDocumentElement req = getDipDocElementFromTreeObject(obj);
 			if (req != null) {
-				fSelectedDipDocElements.add(req);
+				fSelectedDipDocElements.add(req.getDdeId());
 			}
 		}
 	}
 	
 	public void deselect() {
 		Set<IDipTableElement> forUpdateElements = new HashSet<>();		
-		removeDeletedElementsFromSelected();
-		forUpdateElements.addAll(fSelectedTblElements);
-		
+		//removeDeletedElementsFromSelected();
+		fSelectedTblElements.clear();	
+		forUpdateElements.addAll(fSelectedTblElements);	
 		fSelectedDipDocElements.clear();
 		fLastSelectedObj = null;
 		fSelectedTblElements.clear();
@@ -270,7 +275,8 @@ public class KDipTableSelector implements ISelector {
 	}
 
 
-	private static class ReqComparator implements Comparator<IDipDocumentElement> {
+	
+	private static class DdeComparator implements Comparator<IDipDocumentElement> {
 
 		@Override
 		public int compare(IDipDocumentElement dipDoc1, IDipDocumentElement dipDoc2) {
@@ -286,22 +292,24 @@ public class KDipTableSelector implements ISelector {
 			if (dipDoc1 == dipDoc2 || dipDoc1.equals(dipDoc2)) {
 				return 0;
 			}
-			ArrayList<Integer> indexes1 = getIndexes(dipDoc1);
-			ArrayList<Integer> indexes2 = getIndexes(dipDoc2);
+			List<Integer> indexes1 = getIndexes(dipDoc1);
+			List<Integer> indexes2 = getIndexes(dipDoc2);
 			int result = compare(indexes1, indexes2);
 			return result;
 
 		}
 
-		private ArrayList<Integer> getIndexes(IDipDocumentElement dipDocElement) {
-			ArrayList<Integer> result = new ArrayList<>();
+
+		private List<Integer> getIndexes(IDipDocumentElement dipDocElement) {
+			List<Integer> result = new ArrayList<>();
 			IDipDocumentElement currentDicDocElement = dipDocElement;
 			while (true) {
 				IDipParent parent = currentDicDocElement.parent();
 				if (parent == null) {
 					break;
 				}
-				int number = parent.getDipDocChildrenList().indexOf(currentDicDocElement);
+				int number = DipTableUtilities.getIndex(currentDicDocElement);
+						//parent.getDipDocChildrenList().indexOf(currentDicDocElement);
 				result.add(0, number);
 				if (parent instanceof DipProject) {
 					break;
@@ -311,7 +319,80 @@ public class KDipTableSelector implements ISelector {
 			return result;
 		}
 
-		private int compare(ArrayList<Integer> list1, ArrayList<Integer> list2) {
+		private int compare(List<Integer> list1, List<Integer> list2) {
+			if (list1 == null && list2 == null) {
+				return 0;
+			}
+			if (list2 == null) {
+				return -1;
+			}
+			if (list1 == null) {
+				return 1;
+			}
+			int index = 0;
+			while (true) {
+				if (index >= list1.size()) {
+					return -1;
+				}
+				if (index >= list2.size()) {
+					return 1;
+				}
+				int number1 = list1.get(index);
+				int number2 = list2.get(index);
+				if (number1 != number2) {
+					return number1 - number2;
+				}
+				index++;
+			}
+		}
+		
+	
+	}
+	
+	
+	private static class ReqComparator implements Comparator<IDdeID> {
+
+		@Override
+		public int compare(IDdeID dipDoc1, IDdeID dipDoc2) {
+			if (dipDoc1 == null && dipDoc2 == null) {
+				return 0;
+			}
+			if (dipDoc2 == null || DdeStorage.instance.get(dipDoc2) == null) {
+				return -1;
+			}
+			if (dipDoc1 == null  || DdeStorage.instance.get(dipDoc1) == null) {
+				return 1;
+			}
+			if (dipDoc1 == dipDoc2 || dipDoc1.equals(dipDoc2)) {
+				return 0;
+			}
+			List<Integer> indexes1 = getIndexes(dipDoc1);
+			List<Integer> indexes2 = getIndexes(dipDoc2);
+			int result = compare(indexes1, indexes2);
+			return result;
+
+		}
+
+		private List<Integer> getIndexes(IDdeID dipDocElement) {
+			List<Integer> result = new ArrayList<>();
+			IDipDocumentElement currentDicDocElement = DdeStorage.instance.get(dipDocElement);
+			while (true) {
+				IDipParent parent = currentDicDocElement.parent();
+				if (parent == null) {
+					break;
+				}
+				int number = currentDicDocElement.getIndex(); 
+						//parent.getDipDocChildrenList().indexOf(currentDicDocElement);
+				result.add(0, number);
+				if (parent instanceof DipProject) {
+					break;
+				}
+				currentDicDocElement = parent;
+			}
+			return result;
+		}
+
+		private int compare(List<Integer> list1, List<Integer> list2) {
 			if (list1 == null && list2 == null) {
 				return 0;
 			}
@@ -365,7 +446,7 @@ public class KDipTableSelector implements ISelector {
 		if (dipDocElement == null) {
 			return false;
 		}
-		return fSelectedDipDocElements.contains(dipDocElement);
+		return fSelectedDipDocElements.contains(dipDocElement.getDdeId());
 	}
 
 	public boolean isReqDescription() {
@@ -377,7 +458,8 @@ public class KDipTableSelector implements ISelector {
 
 	@Override
 	public boolean hasParentInSelectElements(IDipUnit unit) {
-		for (IDipDocumentElement dipDocElement : fSelectedDipDocElements) {
+		for (IDdeID dipDocID : fSelectedDipDocElements) {
+			IDipDocumentElement dipDocElement = DdeStorage.instance.get(dipDocID);
 			if (dipDocElement instanceof IDipParent) {
 				if (unit.hasParent((IParent) dipDocElement)) {
 					return true;
@@ -545,8 +627,10 @@ public class KDipTableSelector implements ISelector {
 		return fSelectedTblElements;
 	}
 
-	public TreeSet<IDipDocumentElement> getSelectedElements() {
-		return fSelectedDipDocElements;
+	public TreeSet<IDipDocumentElement> getSelectedElements() {		
+		TreeSet<IDipDocumentElement> set = new TreeSet<>(DDE_ORDER_COMPARATOR);
+		set.addAll(DdeStorage.instance.getDocumentElementList(fSelectedDipDocElements));
+		return set;
 	}
 
 	public IDipDocumentElement[] getArraySelectedElements() {
@@ -556,12 +640,13 @@ public class KDipTableSelector implements ISelector {
 	}
 
 	public String[] getSelectedNames() {
-		return fSelectedDipDocElements.stream().map(IDipDocumentElement::name).toArray(String[]::new);
+		return fSelectedDipDocElements.stream()
+				.map(IDdeID::getName).toArray(String[]::new);
 	}
 
 	public IDipDocumentElement getSelectedOneDipDocElement() {
 		if (fSelectedDipDocElements != null && fSelectedDipDocElements.size() == 1) {
-			return fSelectedDipDocElements.first();
+			return DdeStorage.instance.get(fSelectedDipDocElements.first());
 		}
 		return null;
 	}
@@ -580,7 +665,7 @@ public class KDipTableSelector implements ISelector {
 	}
 
 	public IDipDocumentElement first() {
-		return fSelectedDipDocElements.first();
+		return DdeStorage.instance.get(fSelectedDipDocElements.first());
 	}
 
 	public boolean isOneSelected() {
@@ -613,7 +698,7 @@ public class KDipTableSelector implements ISelector {
 	}
 	
 	public boolean hasReadOnlyObjects() {
-		for (IDipDocumentElement dipDocElement: fSelectedDipDocElements) {
+		for (IDipDocumentElement dipDocElement: DdeStorage.instance.getDocumentElementList(fSelectedDipDocElements)) {
 			if (dipDocElement.isReadOnly()) {
 				return true;
 			}

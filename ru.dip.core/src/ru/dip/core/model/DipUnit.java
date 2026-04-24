@@ -19,14 +19,15 @@ import java.util.List;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 
-import ru.dip.core.model.interfaces.IMarkable;
-import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IDipUnit;
-import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.model.interfaces.IMarkable;
+import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.ITextComment;
 import ru.dip.core.model.properties.QualifiedNames;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.UnitDescriptionPresentation;
 import ru.dip.core.unit.UnitExtension;
 import ru.dip.core.unit.UnitPresentation;
@@ -35,31 +36,38 @@ import ru.dip.core.unit.form.FormPresentation;
 
 public class DipUnit extends DipElement implements IDipUnit {
 
-	private UnitDescriptionPresentation fDipUnitDescription;
-	private UnitPresentation fUnitPresentation;
+	private IDdeID fDipUnitDescription;
+	private IDdeID fUnitPresentation;
 	private String fNumber = null;  // for table and images
 	private boolean fHorizontalOrientation = false;
 	private Boolean[] fMarks;
-	
-	public static DipUnit instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.UNIT);
-		if (element == null || element.parent() != parent) {
-			DipUnit unit = new DipUnit(resource, parent);
-			DipRoot.getInstance().putElement(unit);
-			return unit;
-		} else {
-			return (DipUnit) element;
-		}
+
+	public static IDipUnit instance(IResource resource, IParent parent) {
+		DipUnit dipUnit = new DipUnit(resource, parent);
+		DipUnit storageUnit = DdeStorage.instance.get(dipUnit.getDdeId());
+		if (storageUnit != null) {
+			return storageUnit;
+		}		
+		DdeStorage.instance.put(dipUnit.getDdeId(), dipUnit);						
+		// инициализировать нужно после того как положили в хранилище, т.к. дочерние элементы UnitPresentation, UnitDescription ссылаются на DipUnit в хранилище
+		// или создавать их только запросу (надо сделать)
+		dipUnit.init(); 
+		return dipUnit;
+		
 	}
 	
-	protected DipUnit(IResource resource, IParent parent) {
-		super(resource, parent);
-		fDipUnitDescription = new UnitDescriptionPresentation(this);
-		fUnitPresentation = new UnitPresentation(this);
+	protected DipUnit(IResource resource, IParent parent) {		
+		super(resource, parent);		
+	}
+	
+	public void init() {
+		fDipUnitDescription = UnitDescriptionPresentation.instance(this);
+		fUnitPresentation = UnitPresentation.instance(this).getDdeId();
 		fMarks = IMarkable.markNumberSteam()
-				.mapToObj(markNumber -> QualifiedNames.isMark(resource, markNumber))
+				.mapToObj(markNumber -> QualifiedNames.isMark(resource(), markNumber))
 				.toArray(Boolean[]::new);
 	}
+	
 
 	@Override
 	public DipElementType type() {
@@ -67,7 +75,7 @@ public class DipUnit extends DipElement implements IDipUnit {
 	}
 	
 	public UnitType getUnitType() {
-		return fUnitPresentation.getUnitType();
+		return getUnitPresentation().getUnitType();
 	}
 	
 	@Override
@@ -79,22 +87,33 @@ public class DipUnit extends DipElement implements IDipUnit {
 	public IDipParent parent() {
 		return (IDipParent) super.parent();
 	}
-
+	
 	@Override
 	public UnitPresentation getUnitPresentation(){
-		return fUnitPresentation;
+		return DdeStorage.instance.<UnitPresentation>get(fUnitPresentation);
+	}
+	
+	@Override
+	public List<UnitExtension> getAllUnitExtensions() {
+		if (getUnitType().isForm()) {
+			List<UnitExtension> extensions = getFormExtensions();
+			extensions.add(getUnitPresentation());
+			return extensions;
+		} else {
+			return 	List.of(getUnitPresentation(), getUnitDescription());
+		}
 	}
 	
 	@Override
 	public List<UnitExtension> getUnionExtensions() {
-		if (fUnitPresentation.getUnitType().isForm()) {
+		if (getUnitType().isForm()) {
 			return getFormExtensions();								
 		}
 		return 	List.of(getUnitPresentation(), getUnitDescription());	
 	}
 	
-	private List<UnitExtension> getFormExtensions(){
-		FormPresentation formPresentation = (FormPresentation) fUnitPresentation.getPresentation();
+	private List<UnitExtension> getFormExtensions(){		
+		FormPresentation formPresentation = (FormPresentation) getUnitPresentation().getPresentation();
 		List<UnitExtension> extensions = new ArrayList<>();
 		extensions.addAll(formPresentation.getFormFields());
 		extensions.add(getUnitDescription());						
@@ -109,7 +128,7 @@ public class DipUnit extends DipElement implements IDipUnit {
 		DipComment dipComment = (DipComment) comment();
 		if (dipComment == null){
 			if (commentContent != null && !commentContent.trim().isEmpty()){
-				setDipComment(DipComment.createNewDipComment(this, commentContent));
+				setDipCommentByID(DipComment.createNewDipComment(this, commentContent));
 			} 			
 		} else {
 			if (commentContent != null && !commentContent.trim().isEmpty()){
@@ -128,7 +147,7 @@ public class DipUnit extends DipElement implements IDipUnit {
 		DipComment dipComment = (DipComment) comment();
 		if (dipComment != null){
 			dipComment.delete();
-			setDipComment(null);
+			setDipCommentByID(null);
 		}
 	}
 	
@@ -137,7 +156,7 @@ public class DipUnit extends DipElement implements IDipUnit {
 		DipComment dipComment = (DipComment) comment();
 		if (dipComment == null){
 			if (textComments != null && !textComments.isEmpty()){
-				setDipComment(DipComment.createNewDipComment(this, textComments));
+				setDipCommentByID(DipComment.createNewDipComment(this, textComments));
 			} 			
 		} else {
 			dipComment.updateTextComments(textComments);
@@ -149,7 +168,7 @@ public class DipUnit extends DipElement implements IDipUnit {
 	// Description
 	
 	public UnitDescriptionPresentation getUnitDescription(){
-		return fDipUnitDescription;
+		return DdeStorage.instance.<UnitDescriptionPresentation>get(fDipUnitDescription);
 	}
 	
 	@Override
@@ -242,12 +261,12 @@ public class DipUnit extends DipElement implements IDipUnit {
 
 	@Override
 	public void dispose() {
-		if (fDipUnitDescription != null) {
-			fDipUnitDescription.dispose();
-		}
-		if (fUnitPresentation != null) {
-			fUnitPresentation.dispose();
-		}
+		DdeStorage.instance
+			.<UnitDescriptionPresentation>getOptional(fDipUnitDescription)
+			.ifPresent(UnitDescriptionPresentation::dispose);
+		DdeStorage.instance
+			.<UnitPresentation>getOptional(fUnitPresentation)
+			.ifPresent(UnitPresentation::dispose);
 	}
 
 }

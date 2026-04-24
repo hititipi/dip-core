@@ -37,6 +37,8 @@ import ru.dip.core.exception.DeleteDIPException;
 import ru.dip.core.exception.TmpCopyException;
 import ru.dip.core.link.LinkInteractor;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
@@ -287,7 +289,7 @@ public class DipDocElementCommonDropAdapterAssistant extends CommonDropAdapterAs
 		for (Object obj: fSourceItems){
 			if (obj instanceof IDipElement) {
 				IDipElement lastElem = (IDipElement) obj;
-				IDipElement newElem  = fDestiantion.getChild(lastElem.name());
+				IDipElement newElem  = DdeStorage.instance.get(fDestiantion.getChild(lastElem.name()));
 				LinkInteractor.instance().updateLinks(lastElem, newElem);
 			}			
 		}

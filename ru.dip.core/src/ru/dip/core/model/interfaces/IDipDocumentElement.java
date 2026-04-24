@@ -62,7 +62,7 @@ public interface IDipDocumentElement extends IDipElement, ICommentSupport, IDesc
 		
 		List<Integer> getIndexes(IDipDocumentElement dipDocumentElement, List<Integer> indexes){
 			indexes.add(0, dipDocumentElement.getIndex());
-			IDipParent parent = dipDocumentElement.parent();
+			IDipParent parent =	dipDocumentElement.parent();
 			if (!(parent instanceof DipProject)) {
 				getIndexes(parent, indexes);				
 			}
@@ -71,14 +71,14 @@ public interface IDipDocumentElement extends IDipElement, ICommentSupport, IDesc
 		
 	};
 	
-	@Override
-	public IDipParent parent();
+	IDipParent parent();
+
 	
 	default int getIndex() {
 		if (parent() == null) {
 			return -1;
 		}		
-		return parent().getDipDocChildrenList().indexOf(this);	
+		return parent().getDDEChildren().indexOf(this.getDdeId());	
 	}	
 	
 	/**

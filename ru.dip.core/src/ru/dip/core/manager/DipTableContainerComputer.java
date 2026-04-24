@@ -33,6 +33,8 @@ import ru.dip.core.model.interfaces.IDipComment;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDisable;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.table.TableEntry;
 import ru.dip.core.table.TableReader;
 import ru.dip.core.utilities.ResourcesUtilities;
@@ -65,33 +67,38 @@ public class DipTableContainerComputer {
 
 	public List<IDipDocumentElement> computeDipChildren(boolean withBrokenFolders) {
 		fResourceModel = computeResourceModel(fDipContainer);
-
 		if (fResourceModel.fDipComment != null) {
 			fDipContainer.setDipComment(fResourceModel.fDipComment);
 		}
-
 		readDnfo();
 		setProperties();
 
 		addDnfoFilesToModel();
 		addRemainingFilesToModel();
-
 		addDnfoFoldersToModel();
+			
 		computeRemainingFolders(withBrokenFolders);
-
 		addComments();
 		addDescriptions();
-
+		
 		return fResultDipElements;
 	}
 
 	private DipFolderResourceModel computeResourceModel(DipTableContainer container) {
 		DipFolderResourceModel resourceModel = new DipFolderResourceModel();
-		for (IDipElement element : container.getChildren()) {
+		
+		for (IDdeID dde: container.getChildren()) {
+			IDipElement element =  DdeStorage.instance.get(dde);
+			if (element == null) {
+				throw new RuntimeException();
+			}
+		}		
+		
+		for (IDipElement element : DdeStorage.instance.getList(container.getChildren())) {
 			DipElementType type = element.type();
 			if (type == DipElementType.UNIT) {
 				resourceModel.fileList.add((DipUnit) element);
-			} else if (type == DipElementType.FOLDER) {
+			} else if (type == DipElementType.FOLDER) {	
 				resourceModel.folderList.add((DipFolder) element);
 			} else if (type == DipElementType.INCLUDE_FOLDER) {
 				resourceModel.folderList.add((IncludeFolder) element);
@@ -102,7 +109,7 @@ public class DipTableContainerComputer {
 			} else if (type == DipElementType.FOLDER_COMMENT) {
 				resourceModel.fDipComment = ((IDipComment) element);
 			}
-		}
+		}		
 		return resourceModel;
 	}
 
@@ -160,8 +167,7 @@ public class DipTableContainerComputer {
 	private void addDnfoFoldersToModel() {
 		List<TableEntry> folderEntries = modelReader.getFolders();
 		for (TableEntry entry : folderEntries) {
-			DipFolder child = prepareDipFolder(entry);
-
+			DipFolder child = prepareDipFolder(entry);			
 			if (child != null) {
 				child.setActiveNumeration(entry.isShowNumeration());
 				boolean disable = entry.isDisable() || child.dipName().startsWith(IDisable.DISABLE_MARKER);
@@ -266,7 +272,7 @@ public class DipTableContainerComputer {
 	}
 
 	private void removeBrokenFolders() {
-		fDipContainer.getChildren().removeAll(fResourceModel.folderList);
+		fDipContainer.getChildren().removeAll(fResourceModel.folderList.stream().map(IDipElement::getDdeId).toList());
 	}
 
 	private void addComments() {

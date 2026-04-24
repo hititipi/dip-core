@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -50,6 +51,8 @@ import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.IFindable;
 import ru.dip.core.model.interfaces.IGlossarySupport;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.table.TableWriter;
 import ru.dip.core.utilities.DipTableUtilities;
 import ru.dip.core.utilities.DipUtilities;
@@ -63,8 +66,8 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	private final DipTableContainerProperties fProperties;
 	
 	//  элементы для отображения в таблице (только DipFolder и DipUnit) в определенном порядке
-	private List<IDipDocumentElement> fDipDocumentChildren;
-	protected DnfoTable fTable;
+	private List<IDdeID> fDipDocumentChildren;
+	protected IDdeID fTable;
 	protected boolean fActiveNumeration = true;	
 	protected String fFileStepNumeration = null;
 	protected String fFolderStepNumeration = null;
@@ -73,8 +76,8 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	
 	protected boolean fNeedUpdate = false;  // есть ли необходимость, обновить
 	
-	private List<DipUnit> fAppendixTableNumbers = new ArrayList<>();
-	private List<DipUnit> fAppendixImageNumbers = new ArrayList<>();
+	private List<IDdeID> fAppendixTableNumbers = new ArrayList<>();
+	private List<IDdeID> fAppendixImageNumbers = new ArrayList<>();
 	
 	// find
 	private final TextFinderManager fFinderManager;
@@ -96,7 +99,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 				boolean exists = handleNotTableFile(file);
 				if (!exists){					
 					Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
-					MessageDialog.openError(shell, "Read table error", "Ошибка чтения таблицы. Просьба сообщить об этом сообщении разработчикам.");						
+					MessageDialog.openError(shell, "Read table error", "Ошибка чтения таблицы.");						
 					return null;
 				}
 				
@@ -104,18 +107,13 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 				createNewEmptyTable(file);
 			}
 		}
-		fTable = DnfoTable.instance(file, this);
-		fChildren.add(fTable);
-		return fTable;
+		DnfoTable table = DnfoTable.instance(file, this);
+		fTable = table.getDdeId();
+		fChildren.add(table.getDdeId());
+		return table;
 	}
 
 	private boolean handleNotTableFile(IFile file){
-		/*Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
-		MessageDialog.openInformation(shell, "Debug message", "В этом месте пропадало описание директорий. "
-				+ "Если вы читаете это сообщение, значит баг обнаружен. "
-				+ "Сообщите пожалуйста разработчикам, что увидели это сообщение.\n"
-				+ "Желательно обратить внимание, после чего появилось данное сообщение (смена Workspace, операции с файлами и т.п.)");
-		*/
 		ResourcesUtilities.updateProject(resource());
 		WorkbenchUtitlities.updateProjectExplorer();
 		return file.exists();
@@ -140,13 +138,14 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	 */
 	protected List<IDipDocumentElement> computeDipChildren(boolean withBrokenFolders){
 		DipTableContainerComputer computer = new DipTableContainerComputer(this);
-		return computer.computeDipChildren(withBrokenFolders);
+		List<IDipDocumentElement>  result = computer.computeDipChildren(withBrokenFolders);
+		return result;
 	}
 	
 	@Override
 	public void addNewChild(IDipDocumentElement dipDocumentElement, int dipIndex) {
-		fChildren.add(dipDocumentElement);
-		getDipDocumentChildren().add(dipIndex, dipDocumentElement);
+		fChildren.add(dipDocumentElement.getDdeId());
+		getDipDocumentChildren().add(dipIndex, dipDocumentElement.getDdeId());
 	}
 	
 	@Override
@@ -156,9 +155,9 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 
 	@Override
 	public IDipDocumentElement createNewUnit(IFile file, int dipIndex) {
-		DipUnit newUnit = DipUnit.instance(file, this);
-		fChildren.add(newUnit);
-		getDipDocumentChildren().add(dipIndex, newUnit);
+		IDipUnit newUnit = DipUnit.instance(file, this);
+		fChildren.add(newUnit.getDdeId());
+		getDipDocumentChildren().add(dipIndex, newUnit.getDdeId());
 		return newUnit;
 	}
 
@@ -168,9 +167,9 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 			return null;
 		}
 		DipFolder newFolder = DipFolder.instance(folder, this); 
-		fChildren.add(newFolder);
+		fChildren.add(newFolder.getDdeId());
 		int index = DipTableUtilities.getFirstParentIndex(this);
-		getDipDocumentChildren().add(index, newFolder);		
+		getDipDocumentChildren().add(index, newFolder.getDdeId());		
 		newFolder.computeChildren();
 		return newFolder;
 	}
@@ -181,8 +180,8 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 			return null;
 		}	
 		DipFolder newFolder = DipFolder.instance(folder, this); 
-		fChildren.add(newFolder);
-		getDipDocumentChildren().add(dipIndex, newFolder);
+		fChildren.add(newFolder.getDdeId());
+		getDipDocumentChildren().add(dipIndex, newFolder.getDdeId());
 		newFolder.computeChildren();
 		return newFolder;
 	}
@@ -193,9 +192,9 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 		includeFolder.setReadOnly(readOnly);
 		includeFolder.setLinkName(name);
 		includeFolder.setLinkDescription(description);
-		fChildren.add(includeFolder);
+		fChildren.add(includeFolder.getDdeId());
 		int index = DipTableUtilities.getFirstParentIndex(this);
-		getDipDocumentChildren().add(index, includeFolder);		
+		getDipDocumentChildren().add(index, includeFolder.getDdeId());		
 		includeFolder.computeChildren();
 		return includeFolder;
 	}
@@ -206,19 +205,20 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 		includeFolder.setReadOnly(readOnly);
 		includeFolder.setLinkName(name);
 		includeFolder.setLinkDescription(description);
-		fChildren.add(includeFolder);
-		getDipDocumentChildren().add(dipIndex, includeFolder);		
+		fChildren.add(includeFolder.getDdeId());
+		getDipDocumentChildren().add(dipIndex, includeFolder.getDdeId());		
 		includeFolder.computeChildren();
 		return includeFolder;
 	}
 	
 	@Override
-	public void removeChild(IDipElement child) {
+	public void removeChild(IDdeID childId) {
+		Object child = DdeStorage.instance.get(childId);		
 		if (child instanceof DipFolder) {
 			((DipFolder)child).clearWhenDeleting();
 		}
-		super.removeChild(child);
-		getDipDocumentChildren().remove(child);
+		super.removeChild(childId);
+		getDipDocumentChildren().remove(childId);		
 	}
 	
 	@Override
@@ -237,7 +237,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	@Override
 	public IDipDocumentElement[] getOneListChildren(){
 		ArrayList<IDipDocumentElement> result = new ArrayList<>();
-		for (IDipDocumentElement child: getDipDocChildrenList()){
+		for (IDipDocumentElement child: getDdeElements()){
 			if (child instanceof DipTableContainer){
 				result.add(child);
 				Collections.addAll(result, ((IDipParent) child).getOneListChildren());
@@ -250,9 +250,9 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	}
 	
 	@Override
-	public IDipDocumentElement[] getDipChildren() {
+	public IDipDocumentElement[] getDipChildren() {				
 		List<IDipDocumentElement> extendedChildren = new ArrayList<>();		
-		for (IDipDocumentElement element: getDipDocChildrenList()){
+		for (IDipDocumentElement element: getDdeElements()){
 			if (element instanceof IDipParent){
 				extendedChildren.add((IDipParent) element);
 			} else if (element instanceof DipUnit){
@@ -264,29 +264,41 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	}
 	
 	
+	
 	@Override
-	public List<IDipDocumentElement> getDipDocChildrenList() {
+	public List<IDdeID> getDDEChildren() {
 		if (fDipDocumentChildren == null){
 			getChildren();
 		}
-		return getDipDocumentChildren();
+		return fDipDocumentChildren;
+	}
+	
+	@Override
+	public List<IDipDocumentElement> getDdeElements() {
+		if (fDipDocumentChildren == null){
+			getChildren();
+		}
+		return DdeStorage.instance.getDocumentElementList(getDipDocumentChildren());
 	}
 		
 	public DnfoTable getTable(){
 		if (fTable == null) {		
 			computeChildren();
 		}
-		return fTable;
+		return DdeStorage.instance.get(fTable);
 	}
 
 	
-	protected List<IDipDocumentElement> getDipDocumentChildren(){ 
-		checkUpdate(fDipDocumentChildren);
+	protected List<IDdeID> getDipDocumentChildren(){ 
+		// надо ли каждый раз вызывать checkUpdate ???	
+		checkUpdate(fDipDocumentChildren);			
 		return fDipDocumentChildren;
 	}
 	
 	protected void setDipDocElementsChildren(List<IDipDocumentElement> newChildren) {
-		fDipDocumentChildren = newChildren;
+		fDipDocumentChildren = newChildren.stream()
+				.map(IDipDocumentElement::getDdeId)
+				.collect(Collectors.toList());
 	}
 	
 	//=============================
@@ -300,7 +312,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 		fNeedUpdate = true;
 	}
 	
-	protected void checkUpdate(List<IDipDocumentElement> dipDocumentChildren) {};
+	protected void checkUpdate(List<IDdeID> dipDocumentChildren) {};
 		
 	//===================================
 	// numeration
@@ -323,7 +335,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 			return "X";
 		}
 		
-		List<IDipDocumentElement> brothers = parent.getDipDocChildrenList();
+		List<IDipDocumentElement> brothers = parent.getDdeElements();
 		int index = brothers.indexOf(this);
 		if (index >= 0){
 			int result = 0;
@@ -345,7 +357,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 			return "X";
 		}
 		
-		List<IDipDocumentElement> brothers = parent.getDipDocChildrenList();
+		List<IDipDocumentElement> brothers = parent.getDdeElements();
 		int index = brothers.indexOf(this);
 		if (index >= 0){
 			char result = 'А' - 1;
@@ -405,7 +417,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	// данные методы вызывать только для директории appendix)
 	
 	public void updateTableNumbers(){
-		for (IDipDocumentElement dipDocumentElement: getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocumentElement: getDdeElements()) {
 			if (dipDocumentElement instanceof DipTableContainer) {
 				DipTableContainer appendixPartition = (DipTableContainer) dipDocumentElement;
 				appendixPartition.fAppendixTableNumbers = new ArrayList<>();
@@ -416,7 +428,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	}
 	
 	private void updateTableNumbers(IDipParent parent, String appendixNumber, DipTableContainer appendixPartition){		
-		for (IDipDocumentElement dipDocumentElement : parent.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocumentElement : parent.getDdeElements()) {
 			if (dipDocumentElement instanceof IDipParent) {
 				IDipParent dipParent = (IDipParent) dipDocumentElement;		
 				updateTableNumbers(dipParent, appendixNumber, appendixPartition);
@@ -428,15 +440,15 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 					builder.append(appendixNumber);
 					builder.append(nextNumber);
 					unit.setNumber(builder.toString());
-					appendixPartition.fAppendixTableNumbers.add(unit);
-					dipProject().tables().add(unit);
+					appendixPartition.fAppendixTableNumbers.add(unit.getDdeId());
+					dipProject().tables().add(unit.getDdeId());
 				}
 			}			
 		}
 	}
 	
 	public void updateImageNumbers() {
-		for (IDipDocumentElement dipDocumentElement: getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocumentElement: getDdeElements()) {
 			if (dipDocumentElement instanceof DipTableContainer) {
 				DipTableContainer appendixPartition = (DipTableContainer) dipDocumentElement;
 				appendixPartition.fAppendixImageNumbers = new ArrayList<>();
@@ -447,7 +459,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 	}
 	
 	private void updateImageNumbers(IDipParent parent, String appendixNumber, DipTableContainer appendixPartition){		
-		for (IDipDocumentElement dipDocumentElement : parent.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocumentElement : parent.getDdeElements()) {
 			if (dipDocumentElement instanceof IDipParent) {
 				IDipParent dipParent = (IDipParent) dipDocumentElement;		
 				updateImageNumbers(dipParent, appendixNumber, appendixPartition);
@@ -459,8 +471,8 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 					builder.append(appendixNumber);
 					builder.append(nextNumber);
 					unit.setNumber(builder.toString());
-					appendixPartition.fAppendixImageNumbers.add(unit);
-					dipProject().images().add(unit);
+					appendixPartition.fAppendixImageNumbers.add(unit.getDdeId());
+					dipProject().images().add(unit.getDdeId());
 				}
 			}			
 		}
@@ -556,7 +568,8 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 		if (fDipDocumentChildren == null) {
 			getChildren();
 		}
-		fDipDocumentChildren.sort(Comparator.comparing(IDipElement::id));
+		fDipDocumentChildren
+		.sort(Comparator.comparing(ddeID -> DdeStorage.instance.get(fTable).id()));
 		TableWriter.saveModel(this);
 	}
 	
@@ -564,7 +577,7 @@ public abstract class DipTableContainer extends DipContainer implements IDipPare
 		if (fDipDocumentChildren == null) {
 			getChildren();
 		}
-		fDipDocumentChildren.sort(Comparator.comparing(child -> order.indexOf(child.name())));
+		fDipDocumentChildren.sort(Comparator.comparing(child -> order.indexOf(DdeStorage.instance.get(child).name())));
 	}
 	
 	//=================================

@@ -71,14 +71,14 @@ import org.eclipse.ui.progress.WorkbenchJob;
 
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.glossary.GlossaryField;
 import ru.dip.core.model.glossary.GlossaryFolder;
+import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipEditor;
-import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
-import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.table.IContainerEditorInput;
 import ru.dip.core.unit.UnitType;
 import ru.dip.core.utilities.md.UnityMdInput;
@@ -335,7 +335,8 @@ public class WorkbenchUtitlities {
 		}
 	}
 	
-	public static void updateAfterGitChanges(File repoDir) {
+	@SuppressWarnings("unused")
+	private static void updateAfterGitChanges(File repoDir) {
 		// get project
 		List<DipProject> projects = DipUtilities.findProjectsInFolder(repoDir.toPath());
 		// update content
@@ -350,8 +351,7 @@ public class WorkbenchUtitlities {
 		// udpate editors
 		for (IDipEditor editor : editors) {
 			IEditorPart part = (IEditorPart) editor;
-			if (WorkbenchUtitlities.getWorkbenchWindow().getActivePage().isPartVisible(part)) {
-				
+			if (WorkbenchUtitlities.getWorkbenchWindow().getActivePage().isPartVisible(part)) {				
 				Display.getDefault().asyncExec(() -> {
 					editor.updateEditor();
 				});
@@ -361,12 +361,13 @@ public class WorkbenchUtitlities {
 		}
 	}
 	
+	// слишком круто все обновлять, надо посмотреть где вызывается
 	public static void updateRoot() {
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();		
 		IProject[] projects =  root.getProjects();
 		for (int i = 0; i < projects.length; i++){
 			if (DipNatureManager.hasNature(projects[i])){
-				DipProject dipProejct = DipRoot.getInstance().getDipProject(projects[i]);
+				DipProject dipProejct = DdeStorage.instance.getOrCreate(projects[i]);
 				ResourcesUtilities.updateProject(dipProejct.getProject());
 				dipProejct.computeChildren();
 			} 
@@ -571,15 +572,16 @@ public class WorkbenchUtitlities {
 		if (!DipNatureManager.hasNature(file)){
 			return null;
 		}
-		DipProject project = DipRoot.getInstance().getDipProject(file.getProject());
-		if (project == null){
+		DipProject dipProejct = DdeStorage.instance.getOrCreate(file.getProject());
+		//DipProject project = DipRoot.getInstance().getDipProject(file.getProject());
+		if (dipProejct == null){
 			return null;
 		}
-		GlossaryFolder glossFolder = project.getGlossaryFolder();
+		GlossaryFolder glossFolder = dipProejct.getGlossaryFolder();
 		if (glossFolder == null){
 			return null;
 		}
-		GlossaryField field = glossFolder.getChild(text);
+		GlossaryField field = glossFolder.getField(text);
 		return field;		
 	}
 

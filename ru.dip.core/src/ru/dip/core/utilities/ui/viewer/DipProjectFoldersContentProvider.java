@@ -46,7 +46,7 @@ public enum DipProjectFoldersContentProvider implements ITreeContentProvider {
 	public Object[] getElements(Object inputElement) {
 		if (inputElement instanceof IDipParent) {
 			IDipParent dipParent = (IDipParent) inputElement;
-			return dipParent.getDipDocChildrenList().stream()
+			return dipParent.getDdeElements().stream()
 				.filter(IDipParent.class::isInstance)
 				.toArray();
 		} else if (inputElement instanceof ParentHolder) {
@@ -59,7 +59,7 @@ public enum DipProjectFoldersContentProvider implements ITreeContentProvider {
 	public Object[] getChildren(Object parentElement) {
 		if (parentElement instanceof IDipParent) {
 			IDipParent dipParent = (IDipParent) parentElement;
-			return dipParent.getDipDocChildrenList().stream()
+			return dipParent.getDdeElements().stream()
 				.filter(IDipParent.class::isInstance)
 				.toArray();				
 		}		
@@ -78,7 +78,7 @@ public enum DipProjectFoldersContentProvider implements ITreeContentProvider {
 	public boolean hasChildren(Object element) {
 		if (element instanceof IDipParent) {
 			IDipParent dipParent = (IDipParent) element;
-			return dipParent.getDipDocChildrenList().stream()
+			return dipParent.getDdeElements().stream()
 				.filter(IDipParent.class::isInstance)
 				.count() > 0;				
 		}		

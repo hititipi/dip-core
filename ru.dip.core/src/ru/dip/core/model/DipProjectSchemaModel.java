@@ -31,22 +31,24 @@ import ru.dip.core.exception.DeleteDIPException;
 import ru.dip.core.exception.RenameDIPException;
 import ru.dip.core.exception.TmpCopyException;
 import ru.dip.core.form.model.CoreFormModel;
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.schema.FormShowProperties;
-import ru.dip.core.schema.SchemaReader;
 import ru.dip.core.schema.Schema;
-import ru.dip.core.utilities.FileUtilities;
+import ru.dip.core.schema.SchemaReader;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.DipUtilities;
+import ru.dip.core.utilities.FileUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
+import ru.dip.core.utilities.dde.RenameUtils;
 
 public class DipProjectSchemaModel {
 
-	private DipSchemaFolder fSchemaFolder;
-	private ArrayList<Schema> fSchemas = new ArrayList<>();
-	private ArrayList<FormShowProperties> fFormShowSettings = new ArrayList<>();
+	private IDdeID fSchemaFolder;
+	private List<Schema> fSchemas = new ArrayList<>();
+	private List<FormShowProperties> fFormShowSettings = new ArrayList<>();
 
 	public DipProjectSchemaModel(DipSchemaFolder folder) {
-		fSchemaFolder = folder;
+		fSchemaFolder = folder.getDdeId();
 		readSchemaFolder();
 		loadFormShowSettings();
 	}
@@ -56,9 +58,9 @@ public class DipProjectSchemaModel {
 	
 	private void readSchemaFolder() {		
 		fSchemas = new ArrayList<>();
-		for (IDipElement element: fSchemaFolder.getChildren()){			
-			if (element instanceof DipSchemaElement){
-				DipSchemaElement formSchema = (DipSchemaElement) element;		
+		for (IDdeID element: DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).getChildren()){			
+			if (element.getType() == DipElementType.SCHEMA){
+				DipSchemaElement formSchema = DdeStorage.instance.get(element); 
 				Schema schema = getSchema(formSchema);
 				if (schema == null){
 					continue;
@@ -98,7 +100,7 @@ public class DipProjectSchemaModel {
 	}
 	
 	public Schema getRenamedShema(DipSchemaElement formSchema, String newFileName){
-		if (fSchemaFolder.getChild(newFileName) != null){
+		if (DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).getChild(newFileName) != null){
 			String errorMessage = "Схемы содержат одинаковые расширения.[" 
 			+ formSchema.name() + ", " + newFileName + "].";
 			DipCorePlugin.logError(formSchema.resource().getLocation() +  errorMessage);
@@ -106,7 +108,7 @@ public class DipProjectSchemaModel {
 			return null;
 		} else {								
 			try {
-				DipUtilities.renameSchema(formSchema, newFileName, null);
+				RenameUtils.renameSchema(formSchema, newFileName, null);
 				return getSchema(formSchema);
 			} catch (RenameDIPException e) {
 				e.printStackTrace();
@@ -123,7 +125,7 @@ public class DipProjectSchemaModel {
 		for (Schema schema: fSchemas) {
 			FormShowProperties schemaSetting = new FormShowProperties(schema);
 			schemaSetting.createFieldProperties();
-			schemaSetting.loadFieldsProperties(fSchemaFolder.dipProject().getProject());		
+			schemaSetting.loadFieldsProperties(DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).dipProject().getProject());		
 			fFormShowSettings.add(schemaSetting);
 		}
 	}
@@ -152,7 +154,7 @@ public class DipProjectSchemaModel {
 	public Path getSchemaFilePath(String extension){
 		String filename = getSchemaFileName(extension);
 		if (filename != null){
-			return Paths.get(fSchemaFolder.resource().getLocation().toOSString(), filename);
+			return Paths.get(DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).resource().getLocation().toOSString(), filename);
 		}
 		return null;
 	}
@@ -169,11 +171,11 @@ public class DipProjectSchemaModel {
 	public IFile getSchemafile(String extension){
 		for (Schema schema: fSchemas){
 			if (extension.equals(schema.getFileExtension())){				
-				IDipElement schemaElement = fSchemaFolder.getChild(schema.getFileName());
+				IDdeID schemaElement = DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).getChild(schema.getFileName());
 				if (schemaElement == null){
 					return null;
 				}
-				return (IFile) schemaElement.resource();
+				return (IFile)  DdeStorage.instance.get(schemaElement).resource();
 			}
 		}
 		return null;				
@@ -194,7 +196,7 @@ public class DipProjectSchemaModel {
 			return null;
 		}
 		if (schema.isExist()){
-			return Paths.get(fSchemaFolder.resource().getLocation().toOSString(), filename);
+			return Paths.get(DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).resource().getLocation().toOSString(), filename);
 		} else {
 			return  Paths.get(filename);
 		}
@@ -216,17 +218,17 @@ public class DipProjectSchemaModel {
 		if (getSchema(fileExtension) != null){
 			throw new DIPException("Уже существует схема для " + schema.getFileExtension());
 		}	
-		fSchemaFolder.createFolderIfNotExist();	
+		DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).createFolderIfNotExist();	
 		if (!schema.isExist()){
 			String filename = schema.getFileExtension() + ".xml";
-			Path path = Paths.get(fSchemaFolder.resource().getLocation().toOSString(),  filename);
+			Path path = Paths.get(DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).resource().getLocation().toOSString(),  filename);
 			schema.importSchema(path);
 		}
 		fSchemas.add(schema);		
 	}
 	
 	public void remove(Schema schema) throws DeleteDIPException, TmpCopyException {
-		DipSchemaElement formSchema = fSchemaFolder.findFormSchema(schema);
+		DipSchemaElement formSchema = DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder).findFormSchema(schema);
 		if (formSchema != null){
 			DipUtilities.deleteElement(formSchema, false, null, false);
 			fSchemas.remove(schema);		
@@ -240,16 +242,16 @@ public class DipProjectSchemaModel {
 		return fFormShowSettings;
 	}
 	
-	public ArrayList<Schema> getSchemas(){
+	public List<Schema> getSchemas(){
 		return fSchemas;
 	}
 	
 	public DipSchemaFolder getSchemaFolder(){
-		return fSchemaFolder;
+		return DdeStorage.instance.<DipSchemaFolder>get(fSchemaFolder);
 	}
 	
 	public void refresh() {
-		fSchemaFolder.refresh();
+		getSchemaFolder().refresh();
 	}
 
 	public Schema getSchemaByName(String schemaName) {

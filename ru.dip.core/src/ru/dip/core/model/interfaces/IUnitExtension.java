@@ -17,4 +17,6 @@ public interface IUnitExtension {
 	
 	IDipUnit getDipUnit();
 
+	void updateDdeID();
+
 }

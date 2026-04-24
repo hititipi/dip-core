@@ -44,7 +44,7 @@ import ru.dip.core.form.model.RadioField;
 import ru.dip.core.form.model.TextField;
 import ru.dip.core.model.DipProject;
 import ru.dip.core.model.DipProjectSchemaModel;
-import ru.dip.core.model.DipRoot;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.SchemaUtilities;
 
 public class SchemaReader {
@@ -126,7 +126,7 @@ public class SchemaReader {
 	}
 	
 	private File getSchemaFileFromProject(IProject project, String fileExtension){
-		DipProject dipProject = DipRoot.getInstance().findDipProject(project);
+		DipProject dipProject = DdeStorage.instance.getOrCreate(project); 
 		if (dipProject == null) {
 			return null;
 		}

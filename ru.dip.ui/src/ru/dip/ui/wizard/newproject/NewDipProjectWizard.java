@@ -31,7 +31,7 @@ import org.eclipse.ui.wizards.newresource.BasicNewProjectResourceWizard;
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.manager.DipProjectResourceCreator;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
@@ -125,7 +125,7 @@ public class NewDipProjectWizard extends BasicNewProjectResourceWizard implement
 	}
 
 	private DipProject createDipProject(IProject project) {
-		DipProject dipProject = DipRoot.getInstance().getDipProject(project);
+		DipProject dipProject = DdeStorage.instance.getOrCreate(project);
 		DipProjectResourceCreator.createDipProject(dipProject);
 		return dipProject;
 	}

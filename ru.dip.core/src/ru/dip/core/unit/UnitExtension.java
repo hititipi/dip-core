@@ -27,17 +27,19 @@ import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IUnitExtension;
 import ru.dip.core.model.interfaces.IVariablesSupport;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 
 public abstract class UnitExtension implements IUnitExtension, IDipDocumentElement, IFindable, IGlossarySupport, IVariablesSupport {
 	
-	private IDipUnit fUnit;
+	private IDdeID fUnit;
 
 	public UnitExtension(IDipUnit unit) {
-		fUnit = unit;
+		fUnit = unit.getDdeId();
 	}
 	
 	public IDipUnit getDipUnit(){
-		return fUnit;
+		return DdeStorage.instance.get(fUnit);
 	}
 	
 	@Override
@@ -47,32 +49,32 @@ public abstract class UnitExtension implements IUnitExtension, IDipDocumentEleme
 	
 	@Override
 	public boolean isReadOnly() {
-		return fUnit.isReadOnly();
+		return getDipUnit().isReadOnly();
 	}
 	
 	@Override
 	public void setReadOnly(boolean value) {
-		fUnit.setReadOnly(value);
+		getDipUnit().setReadOnly(value);
 	}
 	
 	@Override
 	public boolean isIncluded() {
-		return fUnit.isIncluded();
+		return getDipUnit().isIncluded();
 	}
 	
 	@Override
 	public void setIncluded(boolean value) {
-		fUnit.setIncluded(value);
+		getDipUnit().setIncluded(value);
 	}
 	
 	@Override
 	public boolean canDelete() {
-		return fUnit.canDelete();
+		return getDipUnit().canDelete();
 	}
 	
 	@Override
 	public boolean canRename() {
-		return fUnit.canRename();
+		return getDipUnit().canRename();
 	}
 	
 	//===============
@@ -80,7 +82,7 @@ public abstract class UnitExtension implements IUnitExtension, IDipDocumentEleme
 	
 	@Override
 	public String name() {
-		return fUnit.name();
+		return getDipUnit().name();
 	}
 
 	@Override
@@ -90,14 +92,19 @@ public abstract class UnitExtension implements IUnitExtension, IDipDocumentEleme
 
 	@Override
 	public IResource resource() {
-		return fUnit.resource();
+		return getDipUnit().resource();
 	}
 
 	@Override
 	public IDipParent parent() {
-		return fUnit.parent();
+		return getDipUnit().parent();
 	}
-
+	
+	@Override
+	public IDdeID parentDdeId() {
+		return getDipUnit().parentDdeId();
+	}
+	
 	@Override
 	public void setParent(IParent parent) {
 		
@@ -105,62 +112,62 @@ public abstract class UnitExtension implements IUnitExtension, IDipDocumentEleme
 
 	@Override
 	public boolean hasParent(IParent parent) {
-		return fUnit.hasParent(parent);
+		return getDipUnit().hasParent(parent);
 	}
 
 	@Override
 	public String description() {
-		return fUnit.description();
+		return getDipUnit().description();
 	}
 
 	@Override
 	public void setDescription(String description) {
-		fUnit.setDescription(description);
+		getDipUnit().setDescription(description);
 	}
 	
 	@Override
 	public DipDescription dipDescription() {
-		return fUnit.dipDescription();
+		return getDipUnit().dipDescription();
 	}
 	
 	@Override
 	public void setDipDescription(DipDescription description) {
-		fUnit.setDipDescription(description);
+		getDipUnit().setDipDescription(description);
 	}
 	
 	@Override
 	public void removeDescription() {
-		fUnit.removeDescription();	
+		getDipUnit().removeDescription();	
 	}
 	
 	@Override
 	public void updateDescription(String newDescriptionContent) {
-		fUnit.updateDescription(newDescriptionContent);
+		getDipUnit().updateDescription(newDescriptionContent);
 	}
 	
 	@Override
 	public IDipComment comment() {
-		return fUnit.comment();
+		return getDipUnit().comment();
 	}
 	
 	@Override
 	public String getCommentContent() {
-		return fUnit.getCommentContent();
+		return getDipUnit().getCommentContent();
 	}
 	
 	@Override
 	public void setDipComment(IDipComment comment) {
-		fUnit.setDipComment(comment);
+		getDipUnit().setDipComment(comment);
 	}
 	
 	@Override
 	public void updateDipComment(String newCommentContent) {
-		fUnit.updateDipComment(newCommentContent);
+		getDipUnit().updateDipComment(newCommentContent);
 	}
 
 	@Override
 	public void deleteDipComment() {
-		fUnit.deleteDipComment();
+		getDipUnit().deleteDipComment();
 	}
 	
 
@@ -171,40 +178,48 @@ public abstract class UnitExtension implements IUnitExtension, IDipDocumentEleme
 
 	@Override
 	public String id() {
-		return fUnit.id();
+		return getDipUnit().id();
 	}
 
 	@Override
 	public DipProject dipProject() {
-		return fUnit.dipProject();
+		return getDipUnit().dipProject();
 	}
 	
 	@Override
 	public void setResource(IResource resource) {
-		fUnit.setResource(resource);
+		getDipUnit().setResource(resource);
 	}
 	
 	@Override
 	public void updateWithProject() {
-		fUnit.updateWithProject();
+		getDipUnit().updateWithProject();
 	}
 
 	@Override
 	public boolean isDisabled() {
-		return fUnit.isDisabled();
+		return getDipUnit().isDisabled();
 	}
 	@Override
 	public void setDisabled(boolean value) {
-		fUnit.setDisabled(value);
+		getDipUnit().setDisabled(value);
 	}
 	
 	@Override
 	public boolean isDisabledInDocument() {
-		return fUnit.isDisabledInDocument();
+		return getDipUnit().isDisabledInDocument();
 	}
 	
 	@Override
 	public void dispose() {
 		
+	}
+
+	public IDdeID getDipUnitId() {
+		return fUnit;
+	}
+
+	public void setUnitID(IDdeID ddeId) {
+		fUnit = ddeId;
 	}
 }

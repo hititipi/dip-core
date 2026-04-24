@@ -25,9 +25,9 @@ import org.eclipse.ui.PlatformUI;
 
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.glossary.GlossaryField;
 import ru.dip.core.model.glossary.GlossaryFolder;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.WorkbenchUtitlities;
 import ru.dip.ui.glossary.NewGlossFieldDialog;
 
@@ -51,7 +51,8 @@ public class AddGlossEntryFromTextHandler extends AbstractHandler {
 			if (!DipNatureManager.hasNature(file)) {
 				return null;
 			}
-			DipProject dipProject = DipRoot.getInstance().getDipProject(file.getProject());
+			DipProject dipProject =DdeStorage.instance.getOrCreate(file.getProject());
+
 			GlossaryFolder glossFolder = dipProject.getGlossaryFolder();
 			NewGlossFieldDialog dialog = new NewGlossFieldDialog(window.getShell(), glossFolder, text);
 			dialog.open();			

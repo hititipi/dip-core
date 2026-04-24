@@ -31,6 +31,7 @@ import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.IEditorPart;
@@ -207,8 +208,14 @@ public class SpellCheckView extends ViewPart implements IPropertyListener {
 				fViewer.setInput(dipProject);	
 				return;
 			}
-		}		
-		fViewer.setInput(""); //$NON-NLS-1$
+		}
+		Display.getDefault().asyncExec(new Runnable() {
+			
+			@Override
+			public void run() {
+				fViewer.setInput(""); //$NON-NLS-1$
+			}
+		});
 	}
 
 }

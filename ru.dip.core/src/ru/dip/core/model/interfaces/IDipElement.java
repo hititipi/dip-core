@@ -17,11 +17,13 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IAdaptable;
 
 import ru.dip.core.model.DipElementType;
+import ru.dip.core.storage.IDdeID;
 
 public interface IDipElement extends IAdaptable, IDipProjectHolder {
 
 	//============================
 	// general
+	
 	
 	String name();
 	
@@ -30,6 +32,9 @@ public interface IDipElement extends IAdaptable, IDipProjectHolder {
 	}
 	
 	DipElementType type();
+	
+	IDdeID getDdeId();
+
 	
 	IResource resource();
 	
@@ -50,6 +55,8 @@ public interface IDipElement extends IAdaptable, IDipProjectHolder {
 
 	IParent parent();
 	
+	IDdeID parentDdeId();
+	
 	void setParent(IParent parent);
 	
 	boolean hasParent(IParent parent);
@@ -64,7 +71,5 @@ public interface IDipElement extends IAdaptable, IDipProjectHolder {
 	boolean isIncluded();
 	
 	void setIncluded(boolean value);
-
-
-		
+	
 }

@@ -13,7 +13,7 @@
  *******************************************************************************/
 package ru.dip.ui.action.hyperlink;
 
-import static ru.dip.core.utilities.DnfoUtils.*;
+import static ru.dip.core.utilities.DnfoUtils.DNFO_FILENAME;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,15 +35,15 @@ import org.eclipse.ui.PlatformUI;
 
 import ru.dip.core.link.LinkInteractor;
 import ru.dip.core.manager.DipNatureManager;
-import ru.dip.core.model.IncludeFolder;
 import ru.dip.core.model.DipFolder;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
-import ru.dip.core.model.DnfoTable;
 import ru.dip.core.model.DipTableContainer;
 import ru.dip.core.model.DipUnit;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.model.DnfoTable;
+import ru.dip.core.model.IncludeFolder;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
@@ -135,9 +135,9 @@ public class ReqLink implements IHyperlink {
 		
 		// ссылки на include-объекты
 		String first = oldPath.getName(0).toString();
-		DipProject dipProject = DipRoot.getInstance().findDipProject(project);
+		DipProject dipProject = DdeStorage.instance.getOrCreate(project);
 		if (dipProject != null) {
-			IncludeFolder folder = dipProject.getIncludeFolder(first);
+			IncludeFolder folder = DdeStorage.instance.get(dipProject.getIncludeFolder(first));
 			if (folder != null) {
 			Path folderPath = Paths.get(folder.resource().getLocationURI()).getParent();
 			Path folderResolvePath = folderPath.resolve(oldPath);
@@ -172,7 +172,10 @@ public class ReqLink implements IHyperlink {
 		if (!DipNatureManager.hasNature(project)){
 			return;
 		}
-		DipProject dipProject = DipRoot.getInstance().getDipProject(project);
+		//DipProject dipProject = DipRoot.getInstance().getDipProject(project);
+		DipProject dipProject = DdeStorage.instance.getOrCreate(file.getProject());
+
+		
 		IDipElement element = DipUtilities.findDipElementInProject(file.getParent(), dipProject);
 		if (element instanceof DipTableContainer){
 			openLinkTable((DipTableContainer) element);

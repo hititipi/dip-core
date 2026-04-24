@@ -16,15 +16,45 @@ package ru.dip.core.unit.form;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.schema.FormShowProperties;
+import ru.dip.core.storage.DdeID;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.md.MarkdownSettings;
 
 public class FieldUnity extends AbstractFormField {
 
-	public FieldUnity(IDipUnit unit, List<FormField> fields) {
+	public static  FieldUnity instance(IDipUnit unit, List<FormField> fields) {
+		FieldUnity unity = new FieldUnity(unit, fields);
+		FieldUnity storageInstance = DdeStorage.instance.get(unity.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
+		}
+		DdeStorage.instance.put(unity.getDdeId(), unity);
+		return unity;
+	}
+		
+	private IDdeID fDde;
+		
+	private FieldUnity(IDipUnit unit, List<FormField> fields) {
 		super(unit);
 		fFormFields = fields;
+		fDde = DdeID.ofFormFieldUnity(this);
+	}
+	
+	// Вынести потом в статический метод
+	// добавить метод Compute DdeID
+	@Override
+	public void updateDdeID() {
+		fDde = DdeID.ofFormFieldUnity(this);
+		DdeStorage.instance.put(getDdeId(), this);
+	}
+	
+	@Override
+	public DipElementType type() {
+		return DipElementType.FORM_FIELD;
 	}
 	
 	@Override
@@ -75,5 +105,10 @@ public class FieldUnity extends AbstractFormField {
 	@Override
 	public void cleanFind() {
 		fFinderManager.cleanFind();
+	}
+
+	@Override
+	public IDdeID getDdeId() {
+		return fDde;
 	}
 }

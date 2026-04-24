@@ -17,7 +17,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 
 public class DnfoTable extends DipElement {
 
@@ -26,17 +26,17 @@ public class DnfoTable extends DipElement {
 	public static final String TABLE_SECTION_LABEL = "Section";
 	
 	public static DnfoTable instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.TABLE);
-		if (element == null) {
-			DnfoTable dnfoTable = new DnfoTable(resource, parent);
-			DipRoot.getInstance().putElement(dnfoTable);
-			return dnfoTable;
-		} else {
-			return (DnfoTable) element;
+		DnfoTable dnfoTable = new DnfoTable(resource, parent);
+		DnfoTable storageInstance = DdeStorage.instance.get(dnfoTable.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
+		
+		DdeStorage.instance.put(dnfoTable.getDdeId(), dnfoTable);
+		return dnfoTable;
 	}
 	
-	public DnfoTable(IResource resource, IParent parent) {
+	private DnfoTable(IResource resource, IParent parent) {
 		super(resource, parent);
 	}
 

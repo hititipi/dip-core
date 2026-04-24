@@ -202,7 +202,7 @@ public class NavigatorLabelProvider extends LabelProvider {
 		return image;
 	}
 	
-	private Image decorateInclude(Image image, IDipElement element) {
+	public static Image decorateInclude(Image image, IDipElement element) {
 		ReadOnlyDecorator decorator = ReadOnlyDecorator.getDemoDecorator();
 		if (decorator != null) {
 			Image decorateImage = decorator.decorateImage(image, element);

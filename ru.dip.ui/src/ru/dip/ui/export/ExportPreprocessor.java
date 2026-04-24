@@ -184,7 +184,7 @@ public class ExportPreprocessor implements IExportPreprocessor {
 	 */
 	protected boolean createChildren(DipTableContainer folder, int level, boolean eachFolder) {
 		boolean hasFolder = false;
-		for (IDipDocumentElement dipDocElement: folder.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocElement: folder.getDdeElements()) {
 			if (dipDocElement instanceof DipUnit) {
 				if (((DipUnit) dipDocElement).getUnitType() == UnitType.PAGEBREAK) {
 					createPageBreak();
@@ -374,7 +374,7 @@ public class ExportPreprocessor implements IExportPreprocessor {
 		String fileName = element.getId().replaceAll("/", "_");
 		String fullName = fPartsPath.resolve(fileName).toString();
 		Path path = Paths.get(fullName);			
-		GlossaryFolder.saveFields(path, fDipProject.getGlossaryFolder().getChildren());
+		GlossaryFolder.saveFields(path, fDipProject.getGlossaryFolder().getFields());
 		element.setPath(fullName);
 	}
 
@@ -397,7 +397,6 @@ public class ExportPreprocessor implements IExportPreprocessor {
 
 	//===========================
 	// getters & setters
-
 
 	@Override
 	public Path getSupportPathForElement(IDipUnit unit) {

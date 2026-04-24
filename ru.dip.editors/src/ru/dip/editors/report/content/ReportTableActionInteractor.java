@@ -21,8 +21,8 @@ import org.eclipse.swt.widgets.Menu;
 
 import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.ui.Messages;
-import ru.dip.ui.table.ktable.actions.manager.CopyIdIneractor;
-import ru.dip.ui.table.ktable.actions.manager.CopyIdIneractor.CopyIdType;
+import ru.dip.ui.table.actions.manager.CopyIdIneractor;
+import ru.dip.ui.table.actions.manager.CopyIdIneractor.CopyIdType;
 
 public class ReportTableActionInteractor {
 	

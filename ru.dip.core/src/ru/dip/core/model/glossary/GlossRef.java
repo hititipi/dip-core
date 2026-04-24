@@ -15,25 +15,19 @@ package ru.dip.core.model.glossary;
 
 import org.eclipse.core.resources.IResource;
 
-import ru.dip.core.model.DipElementType;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.DipUnit;
 import ru.dip.core.model.interfaces.IParent;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 
 public class GlossRef extends DipUnit {
 
 	public static GlossRef instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.GLOSS_REF);
-		if (element == null) {
-			GlossRef glossRef = new GlossRef(resource, parent);
-			DipRoot.getInstance().putElement(glossRef);
-			return glossRef;
-		} else {
-			return (GlossRef) element;
-		}
+		GlossRef glossRef = new GlossRef(resource, parent);
+		DdeStorage.instance.put(glossRef.getDdeId(), glossRef);
+		glossRef.init();
+		return glossRef;
 	}
-	
+		
 	private GlossRef(IResource resource, IParent parent) {
 		super(resource, parent);
 	}

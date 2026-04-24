@@ -56,7 +56,7 @@ public class NewVariableDialog extends AbstractVariableDialog {
 	@Override
 	protected void okPressed() {
 		final String name = fNameText.getText().trim();
-		if (fVarContainer.getChild(name) != null){
+		if (fVarContainer.getVariable(name) != null){
 			VarMessagesDialogs.showAlreadyExistsErrorWhenNew(getShell(), name);
 			return;
 		}		

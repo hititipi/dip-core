@@ -21,7 +21,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
-import ru.dip.ui.table.ktable.dialog.HelpFilterDialog;
+import ru.dip.ui.table.dialog.HelpFilterDialog;
 
 public class FilterHelpController {
 

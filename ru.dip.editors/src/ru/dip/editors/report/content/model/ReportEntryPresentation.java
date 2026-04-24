@@ -35,6 +35,7 @@ import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.reports.IReportContainer;
 import ru.dip.core.model.vars.IVarContainer;
 import ru.dip.core.report.model.report.ReportEntry;
+import ru.dip.core.storage.IDdeID;
 
 public class ReportEntryPresentation implements IDipParent {
 
@@ -47,6 +48,15 @@ public class ReportEntryPresentation implements IDipParent {
 	public ReportEntry getEntry() {
 		return fEntry;
 	}
+	
+	
+	@Override
+	public IDdeID getDdeId() {
+		return null;
+		//throw new UnsupportedOperationException();
+	}
+
+	
 	
 	//=====================
 	// stub
@@ -219,7 +229,7 @@ public class ReportEntryPresentation implements IDipParent {
 	}
 
 	@Override
-	public List<? extends IDipElement> getChildren() {
+	public List<IDdeID> getChildren() {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -231,13 +241,13 @@ public class ReportEntryPresentation implements IDipParent {
 	}
 
 	@Override
-	public IDipElement getChild(String name) {
+	public IDdeID getChild(String name) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public void removeChild(IDipElement child) {
+	public void removeChild(IDdeID child) {
 		// TODO Auto-generated method stub
 		
 	}
@@ -333,7 +343,7 @@ public class ReportEntryPresentation implements IDipParent {
 	}
 
 	@Override
-	public List<IDipDocumentElement> getDipDocChildrenList() {
+	public List<IDipDocumentElement> getDdeElements() {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -481,5 +491,18 @@ public class ReportEntryPresentation implements IDipParent {
 		// TODO Auto-generated method stub
 		return null;
 	}
+	
+	@Override
+	public IDdeID parentDdeId() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<IDdeID> getDDEChildren() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 
 }

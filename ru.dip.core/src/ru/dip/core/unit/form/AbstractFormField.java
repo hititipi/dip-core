@@ -53,7 +53,7 @@ public abstract class AbstractFormField extends UnitExtension implements IFormFi
 	protected final TextFinderManager fFinderManager;
 	private final FinderIdManager fFinderIdManager;
 
-	public AbstractFormField(IDipUnit unit) {
+	protected AbstractFormField(IDipUnit unit) {
 		super(unit);
 		fGlossaryPoints = unit != null ? new GlossaryPoints(unit.dipProject()) : null;
 		fSpellErrorPoints = new SpellErrorsPoints();
@@ -247,7 +247,7 @@ public abstract class AbstractFormField extends UnitExtension implements IFormFi
 		return fGlossaryPoints;
 	}
 	
-	protected FormPresentation getFormPresentation() {
+	public FormPresentation getFormPresentation() {
 		return (FormPresentation) getDipUnit().getUnitPresentation().getPresentation();
 	}
 	

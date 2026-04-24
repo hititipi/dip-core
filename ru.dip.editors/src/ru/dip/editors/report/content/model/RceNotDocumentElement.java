@@ -6,6 +6,8 @@ import org.eclipse.swt.graphics.Color;
 
 import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.ui.table.ktable.model.ContentContainer;
 import ru.dip.ui.table.ktable.model.ContentId;
 import ru.dip.ui.table.ktable.model.ContentType;
@@ -17,15 +19,15 @@ public class RceNotDocumentElement implements IDipTableElement {
 
 	private final ContentContainer fContent = new ContentContainer();
 	private final ITableNode fParent;
-	private final IDipElement fDipElement;
+	private IDdeID fDipElement;
 	
 	public RceNotDocumentElement(IDipElement element, ITableNode parent) {
-		fDipElement = element;
+		fDipElement = element.getDdeId();
 		fParent = parent;
 	}
 	
 	public IDipElement getDipElement() {
-		return fDipElement;
+		return DdeStorage.instance.get(fDipElement);
 	}
 	
 	@Override
@@ -125,6 +127,16 @@ public class RceNotDocumentElement implements IDipTableElement {
 	@Override
 	public boolean isVisible() {
 		return true;
+	}
+
+	@Override
+	public void setDipElment(IDdeID id) {
+		fDipElement = id;
+	}
+	
+	@Override
+	public IDdeID getDdeID() {
+		return fDipElement;
 	}
 
 }

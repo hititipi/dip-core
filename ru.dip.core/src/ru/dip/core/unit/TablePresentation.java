@@ -19,21 +19,23 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 
+import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.IFindable;
 import ru.dip.core.model.interfaces.IGlossarySupport;
-import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.ISpellErrorPoints;
 import ru.dip.core.model.interfaces.IVariablesSupport;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 
 public abstract class TablePresentation implements IFindable, IGlossarySupport,IVariablesSupport, ISpellErrorPoints {
 	
-	private final IDipUnit fUnit;
+	private IDdeID fUnit;
 	private final SpellErrorsPoints fSpellErrorPoints;
 	private long fTimeModified;
 	
 	public TablePresentation(IDipUnit unit) {
-		fUnit = unit;
-		fTimeModified = fUnit.resource().getModificationStamp();
+		fUnit = unit.getDdeId();
+		fTimeModified = unit.resource().getLocalTimeStamp();
 		fSpellErrorPoints = new SpellErrorsPoints();
 		read();
 	}
@@ -41,7 +43,7 @@ public abstract class TablePresentation implements IFindable, IGlossarySupport,I
 	protected abstract void read();
 	
 	public boolean checkUpdate(){
-		long newValue = getResource().getModificationStamp();
+		long newValue = getResource().getLocalTimeStamp();
 		if (newValue != getTimeModified()){
 			setTimeModified(newValue);
 			read();
@@ -67,7 +69,11 @@ public abstract class TablePresentation implements IFindable, IGlossarySupport,I
 	}
 	
 	public IDipUnit getUnit(){
-		return fUnit;
+		return DdeStorage.instance.get(fUnit);
+	}
+	
+	public void updateUnit(IDdeID ddeID) {
+		fUnit = ddeID;
 	}
 	
 	public long getTimeModified(){

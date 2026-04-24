@@ -20,6 +20,7 @@ import org.eclipse.jface.viewers.ViewerSorter;
 
 import ru.dip.core.model.DipElementType;
 import ru.dip.core.model.DipProject;
+import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.reports.IReportContainer;
@@ -151,9 +152,10 @@ public class NavigatorViewerSorter extends ViewerSorter {
 			return path1.compareTo(path2);
 		}		
 		if (type == DipElementType.UNIT || DipElementType.isFolderType(type)){
-			IDipParent parent = (IDipParent) element1.parent();
-			int index1 = parent.getDipDocChildrenList().indexOf(element1);
-			int index2 = parent.getDipDocChildrenList().indexOf(element2);
+			//IDipParent parent = (IDipParent) element1.parent();			
+			int index1 =  ((IDipDocumentElement)element1).getIndex();
+					//parent.getDdeElements().indexOf(element1);
+			int index2 = ((IDipDocumentElement)element2).getIndex();
 			return index1 - index2;					
 		}
 		return element1.name().compareTo(element2.name()); 

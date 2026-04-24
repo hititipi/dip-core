@@ -29,13 +29,16 @@ import org.eclipse.ui.model.WorkbenchContentProvider;
 
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.DipSchemaFolder;
+import ru.dip.core.model.glossary.GlossaryFolder;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.reports.ProjectReportFolder;
+import ru.dip.core.model.vars.IVarContainer;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.DipUtilities;
 
 public class NavigatorContentProvider implements ITreeContentProvider {
@@ -50,7 +53,7 @@ public class NavigatorContentProvider implements ITreeContentProvider {
 			Object[] result = new Object[projects.length];
 			for (int i = 0; i < result.length; i++){
 				if (DipNatureManager.hasNature(projects[i])){
-					result[i] = DipRoot.getInstance().getDipProject(projects[i]);
+					result[i] = DdeStorage.instance.getOrCreate(projects[i]);
 				} else {
 					result[i] = projects[i];
 				}
@@ -64,12 +67,27 @@ public class NavigatorContentProvider implements ITreeContentProvider {
 
 	@Override
 	public Object[] getChildren(Object parentElement) {
-		if (parentElement instanceof IParent){	
+		if (parentElement instanceof IParent){		
 			IParent parent = (IParent) parentElement;
-			List<?> children = parent.getChildren();
+			
+			if (parent instanceof GlossaryFolder) {
+				return ((GlossaryFolder) parent).getFields().toArray();
+			}
+			if (parent instanceof IVarContainer) {
+				return ((IVarContainer) parent).getVariables().toArray();
+			}
+			
+			List<?> children = DdeStorage.instance.getList(parent.getChildren());
+					
 			List<Object> result =  new ArrayList<>();
 			result.addAll(children);
+			
 			if (parent instanceof IDipParent) {
+				
+				// удалить из children те DipFolder которых нет в DDeChildren (нет в dnfo)
+				List<IDdeID> ddeChildren = ((IDipParent)parent).getDDEChildren();
+				result.removeIf(dde -> dde instanceof IDipParent && !ddeChildren.contains(((IDipParent) dde).getDdeId()));
+				
 				// добавление сервисных директорий (без .dnfo и которые начинаются с __ )
 				IContainer container = (IContainer) parent.resource();
 				if (container.exists()) {
@@ -89,6 +107,9 @@ public class NavigatorContentProvider implements ITreeContentProvider {
 					}			
 				}
 			}
+			//System.out.println("get children2: " + result);
+
+			
 			return result.toArray();					
 		}
 		if (parentElement instanceof IResource) {
@@ -110,8 +131,8 @@ public class NavigatorContentProvider implements ITreeContentProvider {
 			} 						
 		}	
 		// если нет в ReqChildren
-		for (IDipDocumentElement dipDocElement: parent.getDipDocChildrenList()) {
-			if (Objects.equals(dipDocElement.name(), folderName)) {
+		for (IDipDocumentElement dipDocElement: parent.getDdeElements()) {
+			if (Objects.equals(dipDocElement.name(), folderName)) {				
 				return false;
 			}
 		}

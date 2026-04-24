@@ -28,7 +28,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
-import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.manager.DipProjectResourceCreator;
 import ru.dip.core.model.glossary.ProjectGlossaryFolder;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
@@ -43,8 +42,9 @@ import ru.dip.core.model.reports.ProjectReportFolder;
 import ru.dip.core.model.reports.Report;
 import ru.dip.core.model.vars.ProjectVarContainer;
 import ru.dip.core.schema.Schema;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.unit.UnitType;
-import ru.dip.core.utilities.DipTableUtilities;
 import ru.dip.core.utilities.GITUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.TagStringUtilities;
@@ -64,16 +64,16 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 		void tablesChanged();		
 	}
 	
-	private DipSchemaFolder fSchemaFolder;
-	private IMainReportContainer fMainReportFolder;
+	private IDdeID fSchemaFolder;
+	private IDdeID fMainReportFolder;
 
-	private ProjectGlossaryFolder fGlossFolder;
-	private ProjectVarContainer fVariablesContainer;
+	private IDdeID fGlossFolder;
+	private IDdeID fVariablesContainer;
 	private DipProjectSchemaModel fSchemaModel;
-	private List<IncludeFolder> fIncludeFolders = new ArrayList<>();
-	private List<DipUnit> fTables = new ArrayList<>();
-	private List<DipUnit> fImages = new ArrayList<>();
-	private HashMap<String, ArrayList<DipUnit>> fDipNumbers = new HashMap<>();
+	private List<IDdeID> fIncludeFolders = new ArrayList<>();
+	private List<IDdeID> fTables = null;
+	private List<IDdeID> fImages = null;
+	private HashMap<String, List<IDdeID>> fDipNumbers = new HashMap<>();
 	private List<ProjectImagesListener> fImagesListeners = new ArrayList<>();
 	private List<ProjectTablesListener> fTablesListeners = new ArrayList<>();
 	
@@ -81,14 +81,13 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	private Repository fGitRepo;
 	
 	public static DipProject instance(IProject container) {
-		IDipElement element = DipRoot.getInstance().getElement(container, null, DipElementType.RPOJECT);
-		if (element == null) {
-			DipProject project = new DipProject(container);
-			DipRoot.getInstance().putElement(project);
-			return project;
-		} else {
-			return (DipProject) element;
+		DipProject project = new DipProject(container);
+		DipProject storageProject = DdeStorage.instance.get(project.getDdeId());
+		if (storageProject != null) {
+			return storageProject;
 		}	
+		DdeStorage.instance.put(project.getDdeId(), project);
+		return project;
 	}
 	
 	/**
@@ -108,7 +107,6 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	@Override
 	public void refresh() {
 		super.refresh();
-		DipTableUtilities.saveModel(this);
 	}
 		
 	public String projectName() {
@@ -133,11 +131,11 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	//=======================
 	// compute children model
 	
-	public void computeChildren(){
+	public void computeChildren(){		
 		clearChildren();
 		try {
 			for (IResource resource: resource().members()){
-				DipElementType type = DipRoot.getType(resource);
+				DipElementType type = DipElementType.getType(resource);
 				switch (type){
 				case SCHEMA_FOLDER:{
 					createSchemaFolder((IFolder) resource);
@@ -164,7 +162,6 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 					break;
 				}
 				case SERV_FOLDER:{
-					//createServFolder((IFolder) resource);
 					break;
 				}
 				case BROKEN_FOLDER:{
@@ -245,6 +242,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	}
 	
 	private void clearChildren() {
+		fSchemaModel = null;
 		fSchemaFolder = null;
 		fGlossFolder = null;
 		fMainReportFolder = null;
@@ -305,7 +303,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	}
 		
 	private void updateTableNumbers(IDipParent parent){		
-		for (IDipDocumentElement dipDocumentElement : parent.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocumentElement : parent.getDdeElements()) {
 			if (dipDocumentElement instanceof DipTableContainer) {
 				DipTableContainer dipParent = (DipTableContainer) dipDocumentElement;
 				if (dipParent instanceof Appendix) {
@@ -321,7 +319,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 					} else {
 						int nextNumber = fTables.size() + 1;
 						unit.setNumber(String.valueOf(nextNumber));
-						fTables.add(unit);
+						fTables.add(unit.getDdeId());
 					}
 				}
 			}			
@@ -346,7 +344,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	}
 	
 	private void updateImageNumbers(IDipParent parent){		
-		for (IDipDocumentElement dipDocumentElement : parent.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocumentElement : parent.getDdeElements()) {
 			if (dipDocumentElement instanceof DipTableContainer) {
 				DipTableContainer dipParent = (DipTableContainer) dipDocumentElement;
 				if (dipParent instanceof Appendix) {
@@ -362,7 +360,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 					} else {
 						int nextNumber = fImages.size() + 1;
 						unit.setNumber(String.valueOf(nextNumber));
-						fImages.add(unit);
+						fImages.add(unit.getDdeId());
 					}
 				}
 			}			
@@ -380,22 +378,23 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 		getSchemaModel().getAllExtensions().forEach((ext) -> fDipNumbers.put(ext, new ArrayList<>()));
 	}
 	
-	private void updateFormNumbers(IDipParent parent){		
-		for (IDipDocumentElement dipDocumentElement : parent.getDipDocChildrenList()) {
+	private void updateFormNumbers(IDipParent parent){
+		
+		for (IDipDocumentElement dipDocumentElement : parent.getDdeElements()) {
 			if (dipDocumentElement instanceof IDipParent) {
 				updateFormNumbers((IDipParent) dipDocumentElement);
 			} else if (dipDocumentElement instanceof DipUnit) {
 				DipUnit unit = (DipUnit) dipDocumentElement;
 				if ((unit.getUnitType().isForm())) {
 					String extension = unit.resource().getFileExtension();
-					List<DipUnit> numbers = fDipNumbers.get(extension);
+					List<IDdeID> numbers = fDipNumbers.get(extension);
 					if (numbers != null) {		
 						if (unit.isDisabledInDocument()) {
 							unit.setNumber("X");
 						} else {						
 							int nextNumber = numbers.size() + 1;
 							unit.setNumber(String.valueOf(nextNumber));
-							numbers.add(unit);
+							numbers.add(unit.getDdeId());
 						}
 					}
 				}
@@ -444,7 +443,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	// schema
 	
 	private void createSchemaFolder(IFolder folder){
-		fSchemaFolder = DipSchemaFolder.instance(folder, this);
+		fSchemaFolder = DipSchemaFolder.instance(folder, this).getDdeId();
 		fChildren.add(0, fSchemaFolder);	
 	}
 	
@@ -464,7 +463,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 			IFolder folder = DipProjectResourceCreator.createDefaultSchemaFolder(shell, this);
 			createSchemaFolder(folder);
 		}
-		return new DipProjectSchemaModel(fSchemaFolder);
+		return new DipProjectSchemaModel(DdeStorage.instance.get(fSchemaFolder));
 	}
 	
 	@Override
@@ -482,7 +481,8 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	// report
 	
 	private void createReportFolder(IFolder folder){
-		fMainReportFolder = ProjectReportFolder.instance(folder, this);
+		ProjectReportFolder mainReportFolder = ProjectReportFolder.instance(folder, this);
+		fMainReportFolder = mainReportFolder.getDdeId();
 		if (fSchemaFolder != null && fChildren.size() > 0){
 			fChildren.add(1, fMainReportFolder);
 		} else {
@@ -503,24 +503,26 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	 */
 	public IMainReportContainer getOrCreateReportContainer() {
 		if (fMainReportFolder != null) {
-			return fMainReportFolder;
+			return DdeStorage.instance.get(fMainReportFolder);
 		}
-		fMainReportFolder = new MainReportContainer(this);
+		MainReportContainer mainReportFolder = MainReportContainer.instance(this);
+				//new MainReportContainer(this);
+		fMainReportFolder = mainReportFolder.getDdeId();
 		fChildren.add(0, fMainReportFolder);		
-		return fMainReportFolder;
+		return mainReportFolder;
 	}
 	
 	public IMainReportContainer getReportFolder(){
-		return fMainReportFolder;
+		return DdeStorage.instance.get(fMainReportFolder);
 	}
 	
-	public Report getReport(String reportName){
+	public Report getReport(String reportName){		
 		if (fMainReportFolder == null){
 			return null;
 		}
-		for (IDipElement report: fMainReportFolder.getChildren()){
-			if (report instanceof Report && report.name().equals(reportName)){
-				return (Report) report;
+		for (IDdeID report: getReportFolder().getChildren()){
+			if (report.getType() == DipElementType.REPORT && report.getName().equals(reportName)) {
+				return report.getElement();
 			}
 		}
 		return null;
@@ -535,7 +537,8 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	// glossary
 	
 	private void createMainGlossaryFolder(IFile file){
-		fGlossFolder =  new ProjectGlossaryFolder(file, this);
+		ProjectGlossaryFolder projectGlossaryFolder = ProjectGlossaryFolder.instance(file, this);
+		fGlossFolder =  projectGlossaryFolder.getDdeId();
 		addGlossFodlerToChildren();
 	}
 	
@@ -555,7 +558,8 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	private void createNewGlossaryFolder(Shell shell){
 		IFile file = DipProjectResourceCreator.createGlossaryFile(shell, this);
 		if (file != null){
-			fGlossFolder = new ProjectGlossaryFolder(file, this);
+			ProjectGlossaryFolder glossFolder = ProjectGlossaryFolder.instance(file, this);			
+			fGlossFolder = glossFolder.getDdeId();
 			if (fGlossFolder != null){
 				addGlossFodlerToChildren();
 			}
@@ -565,14 +569,14 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	}
 	
 	public ProjectGlossaryFolder getGlossaryFolder(){
-		return fGlossFolder;
+		return DdeStorage.instance.get(fGlossFolder);
 	}
 	
 	//===========================
 	// vars
 	
 	private void createMainVariablesContainer(IFile file){		
-		fVariablesContainer = new ProjectVarContainer(file, this);
+		fVariablesContainer = ProjectVarContainer.instance(file, this).getDdeId();
 		addVariblesContainerToChildren();
 	}
 	
@@ -595,7 +599,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	private void createNewVariablesContainer(Shell shell){
 		IFile file = DipProjectResourceCreator.createVariablesFile(shell, this);
 		if (file != null){
-			fVariablesContainer = new ProjectVarContainer(file, this);
+			fVariablesContainer = ProjectVarContainer.instance(file, this).getDdeId();
 			if (fVariablesContainer != null){
 				addVariblesContainerToChildren();
 			}
@@ -605,7 +609,7 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	}
 	
 	public ProjectVarContainer getVariablesContainer(){
-		return fVariablesContainer;
+		return DdeStorage.instance.get(fVariablesContainer);
 	}
 	
 	@Override
@@ -616,26 +620,26 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	//============================
 	// include
 	
-	public void addIncludeFolder(IncludeFolder includeFolder) {
+	public void addIncludeFolder(IDdeID includeFolder) {
 		fIncludeFolders.add(includeFolder);
 	}
 	
 	public void removeIncludeFolder(IncludeFolder includeFolder) {
-		fIncludeFolders.remove(includeFolder);
+		fIncludeFolders.remove(includeFolder.getDdeId());
 	}
 	
 	public boolean containtsIncludeFolder(String name) {
-		for (IncludeFolder include: fIncludeFolders) {
-			if (name.equals(include.name())) {
+		for (IDdeID include: fIncludeFolders) {
+			if (name.equals(include.getName())) {
 				return true;
 			}
 		}
 		return false;
 	}
 	
-	public IncludeFolder getIncludeFolder(String name) {
-		for (IncludeFolder include: fIncludeFolders) {
-			if (name.equals(include.name())) {
+	public IDdeID getIncludeFolder(String name) {
+		for (IDdeID include: fIncludeFolders) {
+			if (name.equals(include.getName())) {
 				return include;
 			}
 		}
@@ -647,14 +651,14 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 	
 	private IDipElement createExportConfig(IFile file){
 		ExportConfig config = ExportConfig.instance(file, this);
-		fChildren.add(config);
+		fChildren.add(config.getDdeId());
 		return config;
 	}
 	
 	public String[] getExportConfigs(){
 		return fChildren.stream()
-			.filter((child) -> child.type() == DipElementType.EXPORT_CONFIG)
-			.map(IDipElement::name)
+			.filter((child) -> child.getType() == DipElementType.EXPORT_CONFIG)
+			.map(IDdeID::getName)
 			.toArray(String[]::new);		
 	}
 	
@@ -697,15 +701,22 @@ public class DipProject extends DipTableContainer implements IDipParent, IProjec
 		return DipElementType.RPOJECT;
 	}
 	
-	public List<DipUnit> images(){
+	public List<IDdeID> images(){
+		if (fImages == null) {
+			updateImageNumbers();
+		}
+		
 		return fImages;
 	}
 	
-	public List<DipUnit> tables(){
+	public List<IDdeID> tables(){
+		if (fTables == null) {
+			updateTableNumbers();
+		}
 		return fTables;
 	}
 
-	public List<IncludeFolder> getIncludeFolders(){
+	public List<IDdeID> getIncludeFolders(){
 		return fIncludeFolders;
 	}
 

@@ -37,7 +37,6 @@ import ru.dip.core.model.DipFolder;
 import ru.dip.core.model.DnfoTable;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
-import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.table.TableWriter;
 import ru.dip.core.utilities.DipTableUtilities;
 import ru.dip.core.utilities.DipUtilities;
@@ -73,9 +72,9 @@ public class AddToDocumentHandler extends AbstractHandler {
 		addDnfoFiles(folder);
 		dipParent.refresh();	
 		IDipElement element =  dipParent.createFolder(folder);
-		if (element instanceof DipFolder) {	
-			if (!dipParent.getDipDocChildrenList().contains(element)) {			
-				dipParent.getDipDocChildrenList().add((IDipDocumentElement) element);
+		if (element instanceof DipFolder) {
+			if (!dipParent.getDDEChildren().contains(element.getDdeId())) {
+				dipParent.getDDEChildren().add(element.getDdeId());
 			}
 			((DipFolder) element).computeAllChildren();
 			DipTableUtilities.saveModel(dipParent);

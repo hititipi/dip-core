@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Dip Core
 Bundle-SymbolicName: ru.dip.core;singleton:=true
-Bundle-Version: 2.7.1
+Bundle-Version: 2.8.0
 Bundle-Activator: ru.dip.core.DipCorePlugin
 Bundle-License: https://www.eclipse.org/legal/epl-2.0/
 Require-Bundle: org.eclipse.ui,
@@ -45,6 +45,7 @@ Export-Package: org.commonmark.node,
  ru.dip.core.report.ruleseditor,
  ru.dip.core.report.scanner,
  ru.dip.core.schema,
+ ru.dip.core.storage,
  ru.dip.core.table,
  ru.dip.core.unit,
  ru.dip.core.unit.factory,

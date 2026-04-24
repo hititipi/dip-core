@@ -29,13 +29,14 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import ru.dip.core.DipCorePlugin;
-import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.IDipComment;
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IDipUnit;
-import ru.dip.core.model.interfaces.IDipDocumentElement;
+import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.interfaces.ITextComment;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.FileUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.md.MdUtilities;
@@ -46,24 +47,25 @@ public class DipComment extends DipElement implements IDipComment  {
 	private static final String regex = "^\\[\\d+,\\d+\\]";
 	private static final Pattern pattern = Pattern.compile(regex);
 	
-	public static DipComment instance(IResource resource, IParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.COMMENT);
-		if (element == null) {
-			DipComment dipComment = new DipComment(resource, parent);
-			DipRoot.getInstance().putElement(dipComment);
-			return dipComment;
-		} else {
-			return (DipComment) element;
+	private static DipComment instance(IResource resource, IParent parent) {
+		DipComment dipComment = new DipComment(resource, parent);
+		DipComment storageInstance = DdeStorage.instance.get(dipComment.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
+		DdeStorage.instance.put(dipComment.getDdeId(), dipComment);
+		return dipComment;	
 	}
 		
 	public static DipComment createExistsDipComment(IFile file, IParent parent){
-		DipComment comment = instance(file, parent);
-		comment.read();
-		return comment;
+		DipComment dipComment = new DipComment(file, parent);
+		dipComment.read();
+		DdeStorage.instance.put(dipComment.getDdeId(), dipComment);
+		return dipComment;
+		
 	}
 		
-	public static DipComment createNewDipComment(IDipDocumentElement dipDocumentElement, String descriptionContent){
+	public static IDdeID createNewDipComment(IDipDocumentElement dipDocumentElement, String descriptionContent){
 		Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 		String name  = dipDocumentElement.name() + ".r";
 		IDipParent parent = dipDocumentElement.parent();
@@ -71,10 +73,10 @@ public class DipComment extends DipElement implements IDipComment  {
 			IFile file = ResourcesUtilities.createFile(parent.resource(), name, descriptionContent, shell);
 			if (file.exists()){
 				DipComment comment = instance(file, parent);
-				comment.fDipElement = dipDocumentElement;
+				comment.fDipElement = dipDocumentElement.getDdeId();
 				comment.fCommentContent = descriptionContent;
 				comment.readTextCommentsFromMdFile();
-				return comment;
+				return comment.getDdeId();			
 			}			
 		} catch (CoreException e) {
 			e.printStackTrace();
@@ -82,7 +84,7 @@ public class DipComment extends DipElement implements IDipComment  {
 		return null;
 	}
 	
-	public static DipComment createNewDipComment(IDipDocumentElement dipDocumentElement, List<ITextComment> comments){
+	public static IDdeID createNewDipComment(IDipDocumentElement dipDocumentElement, List<ITextComment> comments){
 		Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 		String name  = dipDocumentElement.name() + ".r";
 		IDipParent parent = dipDocumentElement.parent();
@@ -91,10 +93,10 @@ public class DipComment extends DipElement implements IDipComment  {
 			
 			IFile file = ResourcesUtilities.createFile(parent.resource(), name, content, shell);
 			if (file.exists()){
-				DipComment comment = instance(file, parent);
-				comment.fDipElement = dipDocumentElement;
-				comment.fReviewTextComments = comments;				
-				return comment;
+				DipComment dipComment = instance(file, parent);
+				dipComment.fDipElement = dipDocumentElement.getDdeId();
+				dipComment.fReviewTextComments = comments;
+				return dipComment.getDdeId();
 			}			
 		} catch (CoreException e) {
 			e.printStackTrace();
@@ -102,7 +104,7 @@ public class DipComment extends DipElement implements IDipComment  {
 		return null;
 	}
 	
-	private IDipDocumentElement fDipElement;
+	private IDdeID fDipElement;
 	private String fCommentContent;
 	
 	 // только из файла маркдаун
@@ -115,9 +117,12 @@ public class DipComment extends DipElement implements IDipComment  {
 	}
 	
 	public void setCorrespondingElement(){
-		fDipElement = findCorrespondingElement();
-		if (fDipElement != null){
-			fDipElement.setDipComment(this);
+		IDipDocumentElement dde = findCorrespondingElement();
+		if (dde != null){
+			fDipElement = dde.getDdeId();
+			dde.setDipComment(this);
+		} else {
+			fDipElement = null;
 		}
 	}
 	
@@ -125,9 +130,9 @@ public class DipComment extends DipElement implements IDipComment  {
 		if (parent() instanceof IDipParent){
 			IDipParent dipParent = (IDipParent) parent();
 			String elementName = getElementName();
-			for (IDipElement dipElement: dipParent.getChildren()){			
-				if (dipElement instanceof IDipDocumentElement && elementName.equals(dipElement.name())){
-					return (IDipDocumentElement) dipElement;
+			for (IDdeID ddEID: dipParent.getChildren()){			
+				if (ddEID.isDocumentElement() && elementName.equals(ddEID.getName())){
+					return DdeStorage.instance.get(ddEID);
 				}
 			}			
 		}
@@ -162,7 +167,7 @@ public class DipComment extends DipElement implements IDipComment  {
 	public void delete() {
 		try {
 			ResourcesUtilities.deleteResource(resource(), null);
-			parent().removeChild(this);
+			parent().removeChild(this.getDdeId());
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
@@ -393,7 +398,7 @@ public class DipComment extends DipElement implements IDipComment  {
 
 	@Override
 	public IDipDocumentElement getDipDocumentElement(){
-		return fDipElement;
+		return DdeStorage.instance.get(fDipElement);
 	}
 
 }

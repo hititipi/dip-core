@@ -18,9 +18,9 @@ import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionEvent;
 
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
 import ru.dip.core.model.glossary.GlossaryField;
 import ru.dip.core.model.glossary.GlossaryFolder;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.ui.WSelectionListener;
 import ru.dip.core.utilities.ui.hover.AbstractSelectionHover;
 
@@ -54,7 +54,7 @@ public class GlossaryHover extends AbstractSelectionHover {
 	
 	@Override
 	public String getText(IFile file, String text){	
-		DipProject dipProject = DipRoot.getInstance().getDipProject(file.getProject());
+		DipProject dipProject = DdeStorage.instance.getOrCreate(file.getProject());
 		if (text == null || text.isEmpty()){
 			return null;
 		}		
@@ -62,7 +62,7 @@ public class GlossaryHover extends AbstractSelectionHover {
 		if (glossFolder == null){
 			return null;
 		}
-		GlossaryField field = glossFolder.getChild(text);
+		GlossaryField field = glossFolder.getField(text);
 		if (field == null){
 			return null;
 		}

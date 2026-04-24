@@ -89,7 +89,7 @@ public class UnityMdEditor extends EditorPart implements ICommentManagerHolder, 
 			IDipElement element = DipUtilities.findElement(fFolder);
 			if (element instanceof IDipParent) {
 				fDipParent = (IDipParent) element;
-				fUnits = fDipParent.getDipDocChildrenList().stream()
+				fUnits = fDipParent.getDdeElements().stream()
 					.filter(IDipUnit.class::isInstance)
 					.map(IDipUnit.class::cast)
 					.filter(un -> un.getUnitPresentation().getUnitType().isMarkdown())

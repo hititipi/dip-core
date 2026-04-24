@@ -36,6 +36,7 @@ import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IDipUnit;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
 import ru.dip.core.utilities.WorkbenchUtitlities;
@@ -139,14 +140,14 @@ public class ImagesView extends ViewPart implements ProjectImagesListener, IImag
 		fImageProvider.dispose();
 	}
 	
-	protected void getUnitsFromProject() {
+	protected void getUnitsFromProject() {		
 		if (fPreferences.isFolderMode()) {
 			if (fCurrentFile != null) {
 				IDipElement element = DipUtilities.findElement(fCurrentFile);
 				if (element != null) {
 					IParent parent = element.parent();
 					if (parent instanceof IDipParent) {
-						fUnits = fProject.images()
+						fUnits = DdeStorage.instance.getUnitList(fProject.images())								
 								.stream()
 								.filter(im -> im.parent().equals(parent))
 								.collect(Collectors.toList());
@@ -154,8 +155,8 @@ public class ImagesView extends ViewPart implements ProjectImagesListener, IImag
 					}
 				}
 			}
-		}
-		fUnits = new ArrayList<>(fProject.images());
+		}		
+		fUnits = new ArrayList<>(DdeStorage.instance.getUnitList(fProject.images()));
 	}
 		
 	private void createImageComposite() {	
@@ -219,10 +220,10 @@ public class ImagesView extends ViewPart implements ProjectImagesListener, IImag
 	}
 	
 	private void updateIfNeed() {
-		DipProject project =  WorkbenchUtitlities.getDipProjectFromOpenedEditor();;
+		DipProject project =  WorkbenchUtitlities.getDipProjectFromOpenedEditor();
 		IFile file = WorkbenchUtitlities.getFileFromOpenedEditor();
-		if (Objects.equals(project, fProject) && Objects.equals(file, fCurrentFile)) {
-			getUnitsFromProject();
+		if (Objects.equals(project, fProject) && Objects.equals(file, fCurrentFile) && fImageComposite != null) {
+			getUnitsFromProject();		
 			fImageComposite.updateTable();
 		} else {
 			fullUpdate();

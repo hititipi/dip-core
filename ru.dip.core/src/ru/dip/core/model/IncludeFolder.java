@@ -26,31 +26,34 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
 import ru.dip.core.model.interfaces.IDipDocumentElement;
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IParent;
 import ru.dip.core.model.reports.IMainReportContainer;
 import ru.dip.core.model.reports.ProjectReportFolder;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 import ru.dip.core.utilities.ResourcesUtilities;
 
 public class IncludeFolder extends DipFolder {
 	
 	public static IncludeFolder instance(IFolder container, IParent parent) {
-		IDipElement element = null;
-		if (container != null) {
-			element = DipRoot.getInstance().getElement(container, parent, DipElementType.INCLUDE_FOLDER);
+		IncludeFolder includeFolder = new IncludeFolder(container, parent);
+		IncludeFolder storageInstance = DdeStorage.instance.get(includeFolder.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
 		}
-		if (element == null) {
-			IncludeFolder includeFolder = new IncludeFolder(container, parent);
-			DipRoot.getInstance().putElement(includeFolder);
-			return includeFolder;
-		} else {
-			return (IncludeFolder) element;
-		}
+		DdeStorage.instance.put(includeFolder.getDdeId(), includeFolder);
+		return includeFolder;
 	}
 	
 	public static DipFolder createBrokenLinkFolder(String link, IParent parent) {
 		IncludeFolder includeFolder = new IncludeFolder(null , parent);
 		includeFolder.fErrorLink = link;
+		
+		IncludeFolder storageInstance = DdeStorage.instance.get(includeFolder.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
+		}
+		DdeStorage.instance.put(includeFolder.getDdeId(), includeFolder);	
 		return includeFolder;
 	}
 	
@@ -80,15 +83,23 @@ public class IncludeFolder extends DipFolder {
 	}
 
 	@Override
-	public List<IDipDocumentElement> getDipDocChildrenList() {
+	public List<IDipDocumentElement> getDdeElements() {
 		if (resource() == null) {
 			return new ArrayList<>();
 		}
-		return super.getDipDocChildrenList();
+		return super.getDdeElements();
+	}
+	
+	@Override
+	public List<IDdeID> getDDEChildren() {
+		if (resource() == null) {
+			return new ArrayList<>();
+		}
+		return super.getDDEChildren();
 	}
 	
 	
-	private ProjectReportFolder fReportFolder;
+	private IDdeID fReportFolder;
 	private String fLinkName;
 	private String fLinkDescription;
 	private String fErrorLink;  // нерабочая ссылка, указаная в .dnfo
@@ -110,7 +121,7 @@ public class IncludeFolder extends DipFolder {
 	public String getLinkRelativePath() {
 		if (resource() == null) {
 			return fErrorLink;
-		}		
+		}
 		IPath folderPath = resource().getLocation();
 		IPath parentPath = parent().resource().getLocation();
 		return folderPath.makeRelativeTo(parentPath).toOSString();
@@ -128,7 +139,7 @@ public class IncludeFolder extends DipFolder {
 	public void computeChildren() {
 		if (fReportFolder != null) {
 			IMainReportContainer mainReportFolder = dipProject().getReportFolder();
-			mainReportFolder.removeContainer(fReportFolder);
+			mainReportFolder.removeContainer(DdeStorage.instance.get(fReportFolder));
 		}
 		super.computeChildren();
 	}
@@ -241,11 +252,22 @@ public class IncludeFolder extends DipFolder {
 	@Override
 	protected void createReportFolder(IFolder folder) {
 		// нужно только для инклюдов (наверно перенести сюда)
-		fReportFolder = ProjectReportFolder.instance(folder, this);
+		fReportFolder = ProjectReportFolder.instance(folder, this).getDdeId();
 		fChildren.add(0, fReportFolder);
 		IMainReportContainer main = dipProject().getReportFolder();
 		if (main != null) {
-			main.addContainer(fReportFolder);
+			main.addContainer(DdeStorage.instance.get(fReportFolder));
 		}
 	}
+	
+	@Override
+	public void setResource(IResource resource) {
+		throw new RuntimeException();
+	}
+	
+	@Override
+	public void setParent(IParent parent) {
+		super.setParent(parent);
+	}
+	
 }

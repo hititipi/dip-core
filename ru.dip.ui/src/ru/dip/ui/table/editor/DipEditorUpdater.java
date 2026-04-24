@@ -15,6 +15,7 @@ package ru.dip.ui.table.editor;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -39,11 +40,14 @@ import org.eclipse.ui.progress.IProgressService;
 import ru.dip.core.exception.NotFoundTableNodeException;
 import ru.dip.core.link.LinkInteractor;
 import ru.dip.core.model.DipElementType;
+import ru.dip.core.model.DipFolder;
 import ru.dip.core.model.interfaces.IDipDocumentElement;
 import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IDipUnit;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.table.TableWriter;
+import ru.dip.core.unit.UnitExtension;
 import ru.dip.core.unit.form.FormPresentation;
 import ru.dip.core.utilities.DipUtilities;
 import ru.dip.core.utilities.ResourcesUtilities;
@@ -67,22 +71,45 @@ public class DipEditorUpdater {
 	 * Обновление после переименования файла (папки)
 	 * Переименовываем только идентификаторы
 	 */
-	public void updateAfterRename(IDipParent objectParent, String objName, boolean select) {
-		// additional update (difs)
+	public void updateAfterRename(IDipParent objectParent, String newName, String oldName, boolean select) {
+		ITableNode node = tableModel().findNode(objectParent);
+		IDipDocumentElement renamedElement = DdeStorage.instance.get(objectParent.getChild(newName));		
+		if (renamedElement instanceof IDipUnit) {
+			// найти TableElements		
+			IDipUnit unit = (IDipUnit) renamedElement;
+			List<UnitExtension>  extensions = unit.getUnionExtensions();		
+			List<IDipTableElement> elementsForUpdate = new ArrayList<>();
+			for (UnitExtension unitExtension: extensions) {
+				List<IDipTableElement> oldElements = getElements(List.of(unitExtension));
+				elementsForUpdate.addAll(oldElements);
+			}	
+			tableModel().updateIdentificators(elementsForUpdate);
+		} else if (renamedElement instanceof DipFolder) {
+			TableNode renamedNode =  (TableNode) node.findFirst(newName);
+			renamedNode.setDipElment(renamedElement.getDdeId());
+			List<IDipTableElement> elementsForUpdate =  List.of(renamedNode); 
+			tableModel().updateIdentificators(elementsForUpdate);
+			tableModel().updateDescriptions(elementsForUpdate);
+		}	
+		// additional update (difs)	
 		additionalModelUpdate(objectParent);		
-		IDipDocumentElement renamedElement = (IDipDocumentElement) objectParent.getChild(objName);						
-		tableModel().updateIdentificators(getElements(List.of(renamedElement)));		
+
 	}
 	
 	/**
 	 *  Обновление, если изменился только порядок элементов в папке
 	 */
 	public void updateFolderOrder(ITableNode parent) {
-		saveParent(parent.dipDocElement());
+		parent.computeChildren();
 		updateNumeration();
 		updatePresentationForAllDescriptionsInNode(parent);
+		updateIdentificators(); // переделать на parent
 		additionalModelUpdate(parent.dipDocElement());
-		computeTableTreeContent();	
+		computeTableTreeContent();		
+		table().table().redraw();	
+		tableModel().updateElements(List.of(parent));
+		tableModel().updateElementsWithChild(parent.children());
+		WorkbenchUtitlities.updateProjectExplorer();
 	}
 	
 	/**
@@ -163,7 +190,7 @@ public class DipEditorUpdater {
 		updateChildren(nodeOpt.get());
 		computeTableTreeContent();	
 		// update presentation
-		updateNodePresentationWithChildren(nodeOpt.get());		
+		updateNodePresentationWithChildren(nodeOpt.get());	
 	}
 	
 	public void updateAfterDelete(IDipDocumentElement[] dipDocElements) {
@@ -357,16 +384,15 @@ public class DipEditorUpdater {
 	private void updateNodePresentationWithChildren(Collection<TableNode> nodes) {
 		updateColors();
 		updatePresentationForAllDescriptions();
-		updatePresentationForAllNodes();
-		
-		nodes.forEach(node -> { 
+		updatePresentationForAllNodes();				
+		nodes.forEach(node -> { 						
 			tableModel().updateElements(List.of(node));
 			tableModel().updateElementsWithChild(node.children());
 		});
 	}
 	
 	
-	private void updateOneElement(IDipTableElement element) {	
+	private void updateOneElement(IDipTableElement element) {
 		Display.getDefault().asyncExec(() -> {
 			for (IDipTableElement el: element.allLinkedElements()) {
 				tableModel().updateElements(List.of(el));				
@@ -419,6 +445,8 @@ public class DipEditorUpdater {
 		fEditor.doSave(null);
 	}
 	
+	
+	// надо сделать, чтобы 
 	private void saveParent(IDipParent dipParent) {
 		try {
 			TableWriter.saveModel(dipParent);
@@ -532,7 +560,7 @@ public class DipEditorUpdater {
 	}
 	
 	private void updatePresentationForAllDescriptionsInNode(ITableNode node) {
-		tableModel().updateDescriptionsInNode(node);
+		tableModel().updateDescriptionsInNode(node);	
 	}
 	
 	private void updatePresentationForAllNodes() {
@@ -572,6 +600,7 @@ public class DipEditorUpdater {
 
 	private Set<IResource> getParentResource(Stream<IDipDocumentElement> dipDocElementsStream) {
 		return dipDocElementsStream
+				.filter(dde -> dde.parent() != null)
 				.map(dipDocElement -> dipDocElement.parent().resource())
 				.distinct()
 				.collect(Collectors.toSet());

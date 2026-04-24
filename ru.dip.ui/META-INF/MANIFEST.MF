@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Requiremnt UI
 Bundle-SymbolicName: ru.dip.ui;singleton:=true
-Bundle-Version: 2.7.1
+Bundle-Version: 2.8.0
 Bundle-License: https://www.eclipse.org/legal/epl-2.0/
 Bundle-Localization: plugin
 Bundle-Activator: ru.dip.ui.ReqUIPlugin
@@ -49,15 +49,14 @@ Export-Package: de.kupzog.ktable,
  ru.dip.ui.navigator,
  ru.dip.ui.preferences,
  ru.dip.ui.table,
+ ru.dip.ui.table.actions,
+ ru.dip.ui.table.actions.manager,
+ ru.dip.ui.table.dialog,
  ru.dip.ui.table.dialog.form,
  ru.dip.ui.table.editor,
  ru.dip.ui.table.editor.toolbar,
  ru.dip.ui.table.ktable,
- ru.dip.ui.table.ktable.actions,
- ru.dip.ui.table.ktable.actions.manager,
- ru.dip.ui.table.ktable.actions.undo,
  ru.dip.ui.table.ktable.celleditors,
- ru.dip.ui.table.ktable.dialog,
  ru.dip.ui.table.ktable.model,
  ru.dip.ui.table.ktable.render,
  ru.dip.ui.table.table,

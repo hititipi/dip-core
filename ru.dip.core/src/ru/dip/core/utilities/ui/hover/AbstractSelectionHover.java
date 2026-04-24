@@ -33,7 +33,7 @@ import org.eclipse.ui.IWorkbenchPart;
 import ru.dip.core.manager.DipNatureManager;
 import ru.dip.core.model.DipProject;
 import ru.dip.core.model.DipProjectSchemaModel;
-import ru.dip.core.model.DipRoot;
+import ru.dip.core.storage.DdeStorage;
 import ru.dip.core.unit.UnitType;
 import ru.dip.core.utilities.ArrayUtils;
 import ru.dip.core.utilities.WorkbenchUtitlities;
@@ -84,7 +84,7 @@ public abstract class AbstractSelectionHover implements ISelectionListener {
 			return true;
 		}
 		
-		DipProject dipProject = DipRoot.getInstance().getDipProject(file.getProject());
+		DipProject dipProject = DdeStorage.instance.getOrCreate(file.getProject());
 		DipProjectSchemaModel schemaModel = dipProject.getSchemaModel();
 		if (schemaModel.containsFileExtension(fileExtension)){
 			return true;

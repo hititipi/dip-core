@@ -53,12 +53,12 @@ public class MarkViewModel {
 	}
 		
 	private List<IMarkable> marksFromParent(IDipParent parent) {
-		 List<IMarkable> result = parent.getDipDocChildrenList().stream()
+		 List<IMarkable> result = parent.getDdeElements().stream()
 			.filter(IMarkable.class::isInstance)						
 			.map(IMarkable.class::cast)
 			.filter(this::hasAnyMark)
 			.collect(Collectors.toList());
-		 for (IDipDocumentElement dipDocElement: parent.getDipDocChildrenList()) {
+		 for (IDipDocumentElement dipDocElement: parent.getDdeElements()) {
 			 if (dipDocElement instanceof IDipParent) {
 				 result.addAll(marksFromParent((IDipParent) dipDocElement));
 			 }			

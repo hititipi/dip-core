@@ -16,19 +16,18 @@ package ru.dip.core.model;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 
-import ru.dip.core.model.interfaces.IDipElement;
+import ru.dip.core.storage.DdeStorage;
 
 public class DipSchemaElement extends DipElement {
 
 	public static DipSchemaElement instance(IResource resource, DipSchemaFolder parent) {
-		IDipElement element = DipRoot.getInstance().getElement(resource, parent, DipElementType.SCHEMA);
-		if (element == null) {
-			DipSchemaElement formSchema = new DipSchemaElement(resource, parent);
-			DipRoot.getInstance().putElement(formSchema);
-			return formSchema;
-		} else {
-			return (DipSchemaElement) element;
-		}
+		DipSchemaElement formSchema = new DipSchemaElement(resource, parent);
+		DipSchemaElement storageInstance = DdeStorage.instance.get(formSchema.getDdeId());
+		if (storageInstance != null) {
+			return storageInstance;
+		}	
+		DdeStorage.instance.put(formSchema.getDdeId(), formSchema);
+		return formSchema;
 	}
 	
 	private DipSchemaElement(IResource resource, DipSchemaFolder parent) {

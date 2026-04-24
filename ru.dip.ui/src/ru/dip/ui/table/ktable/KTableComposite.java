@@ -76,7 +76,7 @@ import ru.dip.core.exception.RenameDIPException;
 import ru.dip.core.exception.TmpCopyException;
 import ru.dip.core.model.DipFolder;
 import ru.dip.core.model.DipProject;
-import ru.dip.core.model.DipRoot;
+import ru.dip.core.model.DipTableContainer;
 import ru.dip.core.model.DipUnit;
 import ru.dip.core.model.IncludeFolder;
 import ru.dip.core.model.TocRef;
@@ -120,26 +120,28 @@ import ru.dip.core.utilities.ui.swt.FontDimension;
 import ru.dip.core.utilities.ui.swt.KeyMode;
 import ru.dip.ktable.DipTable;
 import ru.dip.ui.Messages;
+import ru.dip.ui.action.hyperlink.ReqLink;
 import ru.dip.ui.controller.RenameController;
+import ru.dip.ui.table.actions.EditCommentAction;
+import ru.dip.ui.table.actions.EditDescriptionAction;
+import ru.dip.ui.table.actions.OpenAction;
+import ru.dip.ui.table.actions.manager.AutoNumberingInteractor;
+import ru.dip.ui.table.actions.manager.CopyIdIneractor;
+import ru.dip.ui.table.actions.manager.CreateFileInteractor;
+import ru.dip.ui.table.actions.manager.DeleteFileInteractor;
+import ru.dip.ui.table.actions.manager.EditCommentInteractor;
+import ru.dip.ui.table.actions.manager.EditDescriptionInteractor;
+import ru.dip.ui.table.actions.manager.ImportActionInteractor;
+import ru.dip.ui.table.actions.manager.IncludeInteractor;
+import ru.dip.ui.table.actions.manager.IntoFolderInteractor;
+import ru.dip.ui.table.actions.manager.PasteInteractor;
+import ru.dip.ui.table.actions.undo.ActionStack;
+import ru.dip.ui.table.dialog.AutoNumberingDialog;
+import ru.dip.ui.table.dialog.HelpCtrlDialog;
+import ru.dip.ui.table.editor.DipEditorRegister;
 import ru.dip.ui.table.editor.DipTableEditor;
 import ru.dip.ui.table.ktable.TableSizeInteractor.CompositeControlListener;
-import ru.dip.ui.table.ktable.actions.EditCommentAction;
-import ru.dip.ui.table.ktable.actions.EditDescriptionAction;
-import ru.dip.ui.table.ktable.actions.OpenAction;
-import ru.dip.ui.table.ktable.actions.manager.AutoNumberingInteractor;
-import ru.dip.ui.table.ktable.actions.manager.CopyIdIneractor;
-import ru.dip.ui.table.ktable.actions.manager.CreateFileInteractor;
-import ru.dip.ui.table.ktable.actions.manager.DeleteFileInteractor;
-import ru.dip.ui.table.ktable.actions.manager.EditCommentInteractor;
-import ru.dip.ui.table.ktable.actions.manager.EditDescriptionInteractor;
-import ru.dip.ui.table.ktable.actions.manager.ImportActionInteractor;
-import ru.dip.ui.table.ktable.actions.manager.IncludeInteractor;
-import ru.dip.ui.table.ktable.actions.manager.IntoFolderInteractor;
-import ru.dip.ui.table.ktable.actions.manager.PasteInteractor;
-import ru.dip.ui.table.ktable.actions.undo.ActionStack;
 import ru.dip.ui.table.ktable.celleditors.CellEditorManager;
-import ru.dip.ui.table.ktable.dialog.AutoNumberingDialog;
-import ru.dip.ui.table.ktable.dialog.HelpCtrlDialog;
 import ru.dip.ui.table.ktable.diff.DiffInteractor;
 import ru.dip.ui.table.ktable.model.DipTableModel;
 import ru.dip.ui.table.ktable.model.HideElements;
@@ -194,7 +196,6 @@ public class KTableComposite extends Composite implements ITableComposite {
 	@SuppressWarnings("unused")
 	private CompositeControlListener fCompositeControlLlistener;
 	private KeyListener fKeyListener;
-
 	
 	// settings
 	private TableCompositeSettings fSettings;
@@ -934,7 +935,7 @@ public class KTableComposite extends Composite implements ITableComposite {
 
 	private void resetNumeration(IDipParent parent) {
 		parent.setActiveNumeration(true);
-		for (IDipDocumentElement dipDocElement : parent.getDipDocChildrenList()) {
+		for (IDipDocumentElement dipDocElement : parent.getDdeElements()) {
 			if (dipDocElement instanceof IDipParent) {
 				resetNumeration((IDipParent) dipDocElement);
 			}
@@ -1268,17 +1269,21 @@ public class KTableComposite extends Composite implements ITableComposite {
 
 	public RenameResult doRename(IDipDocumentElement dipDocElement,String newName, boolean reserve) throws RenameDIPException {
 		String oldName = dipDocElement.name();
-		doRenameWithoutResult(dipDocElement, newName, reserve);
+		doRenameWithoutResult(dipDocElement, newName, oldName, reserve);
 		return new RenameResult(DipUtilities.relativeProjectID(dipDocElement.parent()), oldName, newName, reserve);
 	}
 	
-	public void doRenameWithoutResult(IDipDocumentElement dipDocElement, String newName, boolean reserve) throws RenameDIPException {		
+	public void doRenameWithoutResult(IDipDocumentElement dipDocElement, String newName, String oldName,  boolean reserve) throws RenameDIPException {		
 		RenameController controller = new RenameController(dipDocElement, newName, reserve, getShell());
 		IStatus status = controller.doRename();
 		if (status == null || !status.isOK()) {			
 			throw new RenameDIPException("Rename Error");
-		}
-		fEditor.updater().updateAfterRename(dipDocElement.parent(), newName, true);
+		}		
+		fEditor.updater().updateAfterRename(dipDocElement.parent(), newName, oldName, true);				
+		DipEditorRegister.instance.findEditors(dipDocElement.parent())
+		.stream()
+		.filter(editor -> !editor.equals(fEditor))
+		.forEach(editor -> editor.updater().updateAfterRename(dipDocElement.parent(), newName, oldName, false));
 	}
 	
 	public boolean canRename() {
@@ -1321,9 +1326,9 @@ public class KTableComposite extends Composite implements ITableComposite {
 			.map(IDipDocumentElement.class::cast)
 			.collect(Collectors.toList());
 			
-			TreeSet<IDipDocumentElement> set = new TreeSet<>(KDipTableSelector.ORDER_COMPARATOR);
+			TreeSet<IDipDocumentElement> set = new TreeSet<>(KDipTableSelector.DDE_ORDER_COMPARATOR);
 			set.addAll(dipDocElements);
-			return doUpManyElements(set);			
+			return doUpManyElements(set);		
 		}
 	}
 
@@ -1398,7 +1403,7 @@ public class KTableComposite extends Composite implements ITableComposite {
 			.map(IDipDocumentElement.class::cast)
 			.collect(Collectors.toList());
 			
-			TreeSet<IDipDocumentElement> set = new TreeSet<>(KDipTableSelector.ORDER_COMPARATOR);
+			TreeSet<IDipDocumentElement> set = new TreeSet<>(KDipTableSelector.DDE_ORDER_COMPARATOR);
 			set.addAll(dipDocElements);
 			
 			return doDownManyElements(set);
@@ -1420,10 +1425,10 @@ public class KTableComposite extends Composite implements ITableComposite {
 	}
 
 	private UpDownResult doDownOneElement(IDipTableElement element, IDipDocumentElement dipDocElement) {
-		if (dipDocElement != null) {
-			DipTableUtilities.down(dipDocElement);
-			element.parent().down(element);
-			fEditor.updater().updateFolderOrder(element.parent());
+		if (dipDocElement != null) {			
+			DipTableUtilities.down(dipDocElement);			
+			element.parent().down(element);	
+			fEditor.updater().updateFolderOrder(element.parent());		
 			fSelector.setTableElementSelection(element);
 			return new UpDownResult(false, dipDocElement);
 		}
@@ -1497,6 +1502,8 @@ public class KTableComposite extends Composite implements ITableComposite {
 		IDipDocumentElement selectedElement = fSelector.getSelectedOneDipDocElement();
 		if (selectedElement instanceof DipUnit) {
 			OpenAction.openFile((DipUnit) selectedElement, getShell());
+		} else if (selectedElement instanceof DipTableContainer) {
+			ReqLink.openTable(((DipTableContainer) selectedElement).getTable());
 		}
 	}
 
@@ -1770,7 +1777,8 @@ public class KTableComposite extends Composite implements ITableComposite {
 				return null;
 			}
 			
-			List<String> oldOrder = tableContainer.getDipDocChildrenList().stream()
+			// надо проверить как работает
+			List<String> oldOrder = tableContainer.getDdeElements().stream()
 					.map(IDipDocumentElement::name).collect(Collectors.toList());			
 			doSort(tableContainer);
 			MessageDialog.openInformation(getShell(), Messages.KTableComposite_SortingShellTitle2,
@@ -1837,7 +1845,6 @@ public class KTableComposite extends Composite implements ITableComposite {
 	}
 
 	public void resourceUpdate() {
-		DipRoot.getInstance().clear();
 		ResourcesUtilities.updateRoot();
 		WorkbenchUtitlities.updateInputProjectExplorer();
 		WorkbenchUtitlities.updateNavigatorServiceExplorer();
@@ -1850,12 +1857,12 @@ public class KTableComposite extends Composite implements ITableComposite {
 		try {
 			ps.busyCursorWhile(new IRunnableWithProgress() {
 				public void run(IProgressMonitor pm) {
-					Display.getDefault().asyncExec(() -> {
-						updateBackgrouColor();
-						fDipTableModel.globalUpdate();
+					updateBackgrouColor();
+					fDipTableModel.globalUpdate();
+					Display.getDefault().syncExec(() -> {
 						refreshTable();
-						fEditor.fireUpdateTableComposite();
 					});
+					fEditor.fireUpdateTableComposite();
 				}
 			});
 		} catch (InvocationTargetException e) {

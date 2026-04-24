@@ -24,10 +24,10 @@ import org.eclipse.core.runtime.CoreException;
 
 import ru.dip.core.model.DipContainer;
 import ru.dip.core.model.DipElementType;
-import ru.dip.core.model.DipRoot;
-import ru.dip.core.model.interfaces.IDipElement;
 import ru.dip.core.model.interfaces.IDipParent;
 import ru.dip.core.model.interfaces.IParent;
+import ru.dip.core.storage.DdeStorage;
+import ru.dip.core.storage.IDdeID;
 
 /**
  * Папка в корне проекта (для обратной совместимости) Включает в себя
@@ -38,18 +38,14 @@ public class ProjectReportFolder extends DipContainer implements IMainReportCont
 	public static final String REPORT_FOLDER_NAME = "Reports";
 
 	public static ProjectReportFolder instance(IFolder container, IDipParent parent) {
-		IDipElement element = DipRoot.getInstance().getElement(container, parent, DipElementType.REPORT_FOLDER);
-		if (element == null) {
-			ProjectReportFolder reportFolder = new ProjectReportFolder(container, parent);
-			DipRoot.getInstance().putElement(reportFolder);
-			return reportFolder;
-		} else {
-			return (ProjectReportFolder) element;
-		}
+		ProjectReportFolder reportFolder = new ProjectReportFolder(container, parent);		
+		DdeStorage.instance.put(reportFolder.getDdeId(), reportFolder);		
+		return reportFolder;
+
 	}
 
-	private List<Report> fReports;
-	private List<IReportContainer> fReportContainers = new ArrayList<>();
+	private List<IDdeID> fReports;
+	private List<IDdeID> fReportContainers = new ArrayList<>();
 
 	private ProjectReportFolder(IContainer container, IParent parent) {
 		super(container, parent);
@@ -83,7 +79,7 @@ public class ProjectReportFolder extends DipContainer implements IMainReportCont
 					String extension = ((IFile) resource).getFileExtension();
 					if (Report.REPORT_EXTENSION.equals(extension)) {
 						Report report = Report.instance(resource, this);
-						fReports.add(report);
+						fReports.add(report.getDdeId());
 					}
 				}
 			}
@@ -93,9 +89,9 @@ public class ProjectReportFolder extends DipContainer implements IMainReportCont
 	}
 
 	@Override
-	public IDipElement getChild(String name) {
-		for (Report report : fReports) {
-			if (name.equals(report.name())) {
+	public IDdeID getChild(String name) {
+		for (IDdeID report : getReports()) {
+			if (name.equals(report.getName())) {
 				return report;
 			}
 		}
@@ -103,11 +99,11 @@ public class ProjectReportFolder extends DipContainer implements IMainReportCont
 	}
 
 	@Override
-	public List<IDipElement> getChildren() {
+	public List<IDdeID> getChildren() {
 		if (fReports == null) {
 			computeChildren();
 		}
-		List<IDipElement> result = new ArrayList<>();
+		List<IDdeID> result = new ArrayList<>();
 		result.addAll(fReports);
 		if (fReportContainers != null) {
 			result.addAll(fReportContainers);
@@ -117,18 +113,18 @@ public class ProjectReportFolder extends DipContainer implements IMainReportCont
 
 	@Override
 	public void addContainer(IReportContainer reportContainer) {
-		fReportContainers.add(reportContainer);
+		fReportContainers.add(reportContainer.getDdeId());
 	}
 
 	@Override
 	public void removeContainer(IReportContainer reportContainer) {
-		fReportContainers.remove(reportContainer);
+		fReportContainers.remove(reportContainer.getDdeId());
 	}
 
 	@Override
 	public Report loadReport(IFile file) {
 		Report report = Report.instance(file, this);
-		fReports.add(report);
+		fReports.add(report.getDdeId());
 		return report;
 	}
 
@@ -138,7 +134,7 @@ public class ProjectReportFolder extends DipContainer implements IMainReportCont
 	}
 
 	@Override
-	public List<Report> getReports() {
+	public List<IDdeID> getReports() {
 		if (fReports == null) {
 			computeChildren();
 		}
@@ -146,7 +142,7 @@ public class ProjectReportFolder extends DipContainer implements IMainReportCont
 	}
 
 	@Override
-	public void removeChild(IDipElement child) {
+	public void removeChild(IDdeID child) {
 		fReports.remove(child);
 	}
 
